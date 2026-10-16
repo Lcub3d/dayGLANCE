@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { dateToString } from '../utils/taskUtils.js';
 import { isMonthDaySheetOpen } from '../components/month/MonthDaySheet.jsx';
 import { cyclerStates, nextState, VIEW_SHORTCUT_KEYS } from '../constants/views.js';
+import { aiFeatureOn } from '../ai.js';
 
 const getNextQuarterHour = () => {
   const now = new Date();
@@ -372,7 +373,7 @@ export default function useKeyboardShortcuts({
       }
 
       // 'e' for end-of-day reschedule
-      if (e.key === 'e' && noModifiers && aiConfig?.enabled && aiConfig.features?.aiReschedule && gtdFrames.filter(f => f.enabled).length > 0) {
+      if (e.key === 'e' && noModifiers && aiFeatureOn(aiConfig, 'aiReschedule') && gtdFrames.filter(f => f.enabled).length > 0) {
         e.preventDefault();
         setShowRescheduleModal(true);
         setRescheduleResults(null);

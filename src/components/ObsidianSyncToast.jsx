@@ -13,7 +13,7 @@ const ObsidianSyncToast = () => {
   // reads the stream and queues intents. The toast names that, so it never
   // contradicts the settings line saying vault changes wait for Obsidian.
   const vaultPosture = bridgeHeartbeatRef?.current?.vaultPosture;
-  const { cardBg, borderClass, textPrimary, textSecondary, isMobile } = useDayPlannerCtx();
+  const { cardBg, borderClass, textPrimary, textSecondary, isMobile, openSettings } = useDayPlannerCtx();
 
   // Fire-and-forget NOTICE (e.g. a two-sided retitle resolution): neutral
   // styling, never red — nothing failed, two edits disagreed and one won.
@@ -76,6 +76,17 @@ const ObsidianSyncToast = () => {
           <p className={`text-sm font-medium ${textPrimary}`}>{message}</p>
           {isError && <p className={`text-xs ${textSecondary}`}>{t('sync.obsidianToast.tapToDismiss')}</p>}
         </div>
+        {/* The reason and the fix live in Obsidian's settings. */}
+        {isError && openSettings && (
+          <button
+            type="button"
+            data-obsidian-toast-settings
+            onClick={(e) => { e.stopPropagation(); dismiss(); openSettings('integrations', 'obsidian'); }}
+            className="flex-shrink-0 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            {t('common.settings')}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -17,6 +17,7 @@ import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { useTranslation } from 'react-i18next';
 import { notBucketed } from '../utils/bucketList.js';
+import { aiFeatureOn } from '../ai.js';
 
 const InboxSidebar = ({ variant = 'desktop' }) => {
   const {
@@ -110,7 +111,7 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
           <Plus size={14} strokeWidth={3} />
           <span className="text-xs font-medium">{t('common.newTask')}</span>
         </button>
-        {aiConfig?.enabled && aiConfig.features?.smartScheduling && myFrames.filter(f => f.enabled).length > 0 && unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample).length > 0 && (
+        {aiFeatureOn(aiConfig, 'smartScheduling') && myFrames.filter(f => f.enabled).length > 0 && unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample).length > 0 && (
           <button
             onClick={() => { setShowFramesModal(true); setFramesModalTab('schedule'); setEditingFrame(null); }}
             className="h-8 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -402,7 +403,7 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
       >
         <Plus size={16} strokeWidth={3} />
       </button>
-      {aiConfig?.enabled && aiConfig.features?.smartScheduling && myFrames.filter(f => f.enabled).length > 0 && unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample).length > 0 && (
+      {aiFeatureOn(aiConfig, 'smartScheduling') && myFrames.filter(f => f.enabled).length > 0 && unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample).length > 0 && (
         <button
           onClick={() => { setShowFramesModal(true); setFramesModalTab('schedule'); setEditingFrame(null); }}
           className="p-2 flex items-center justify-center bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors"

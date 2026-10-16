@@ -92,7 +92,7 @@
       "accountIdPlaceholder": "家庭账户 ID",
       "vaultReloadHint": "保存 GLANCEvault 设置后，应用会重新加载并重建同步引擎。",
       "vaultNeedsEncryption": "GLANCEvault 始终使用端到端加密。请先开启上方的“{{encryption}}”并设置同步口令。",
-      "vaultNeedsPassphrase": "请在上方的加密区域输入同步口令，以在此设备上启用 GLANCEvault。",
+      "vaultNeedsPassphrase": "您的同步密码短语，用于在此设备上连接 GLANCEvault。",
       "vaultUnreachableSimple": "无法连接此 URL 上的 GLANCEvault。",
       "vaultAllowPrivateAddress": "允许此地址…",
       "vaultAllowPrivateAddressHint": "dayGLANCE 会请你确认。请只允许你自己网络中的地址。",
@@ -775,7 +775,8 @@
     },
     "theme": "主题",
     "themeSystem": "跟随系统",
-    "glanceWebdavLog": "WebDAV 事件日志"
+    "glanceWebdavLog": "WebDAV 事件日志",
+    "aiNeedsKey": "请先在上方添加 API 密钥，才能开启这些功能。"
   },
   "dailyNotes": {
     "quickNotes": "快速笔记",

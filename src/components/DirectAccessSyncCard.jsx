@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FolderOpen, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import SettingsCard from './settings/SettingsCard.jsx';
 import useDirectAccessStatus from '../hooks/useDirectAccessStatus.js';
 import { isNativeAndroid, isNativeIOS } from '../native.js';
 import { directAccessTransport, DIRECT_ACCESS_LAST_SYNCED_KEY } from '../sync/directAccessTransport.js';
@@ -113,47 +114,39 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
     finally { setBusy(false); }
   };
   const toggle = () => transport.setEnabled(!status.enabled);
+  // Not connected: the switch shows the choice of folder or file.
+  const [choosing, setChoosing] = useState(false);
+  // A connection ends the choosing; a later disconnect starts from off.
+  useEffect(() => { if (status.connected) setChoosing(false); }, [status.connected]);
 
   const button = `px-3 py-1.5 text-sm rounded-lg border ${borderClass} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'} ${textPrimary} disabled:opacity-50`;
 
+  // A Settings card like the other channels (docs/settings-redesign.md), its
+  // switch there in every state. Connected, it turns the channel on and off,
+  // and the contents stay while off: changing the folder and disconnecting
+  // are still there to do. Not connected, turning it on shows the folder (or
+  // file) choice; picking one connects it. Encryption is a card inside it, as
+  // the Sync page's own encryption is.
+  const platformHint = isNativeAndroid() ? t('directAccess.androidHint') : isNativeIOS() ? t('directAccess.iosHint') : null;
+  const removable = crypto.hasEncryptionReady() || !!crypto.getSyncPassphrase();
   return (
-    <div className={`rounded-lg border ${borderClass} p-3 space-y-3`}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className={`text-sm font-medium ${textPrimary} flex items-center gap-2`}>
-            <FolderOpen size={14} className={textSecondary} />
-            {t('directAccess.title')}
-          </p>
-          <p className={`text-xs ${textSecondary}`}>{t('directAccess.desc')}</p>
-          {/* The Google Drive and Dropbox apps do not offer a folder tree to the
-              Android picker; only an app that mirrors to local storage works. */}
-          {isNativeAndroid() && (
-            <p className={`text-xs ${textSecondary} mt-1`}>{t('directAccess.androidHint')}</p>
-          )}
-          {isNativeIOS() && (
-            <p className={`text-xs ${textSecondary} mt-1`}>{t('directAccess.iosHint')}</p>
-          )}
-        </div>
-        {status.connected && (
-          <button
-            type="button"
-            onClick={toggle}
-            role="switch"
-            aria-checked={status.enabled}
-            aria-label={t('directAccess.title')}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
-              status.enabled ? 'bg-green-500' : darkMode ? 'bg-gray-600' : 'bg-stone-300'
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${
-                status.enabled ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        )}
-      </div>
-
+    <SettingsCard
+      cardId="directAccess"
+      icon={FolderOpen}
+      title={t('directAccess.title')}
+      hint={<>
+        {t('directAccess.desc')}
+        {/* The Google Drive and Dropbox apps do not offer a folder tree to the
+            Android picker; only an app that mirrors to local storage works. */}
+        {platformHint && <span className="block mt-1">{platformHint}</span>}
+      </>}
+      checked={status.connected ? !!status.enabled : choosing}
+      onToggle={status.connected ? toggle : setChoosing}
+      contentsWhenOff={status.connected}
+      summary={!status.connected && !choosing ? (ios ? t('directAccess.notConnectedFile') : t('directAccess.notConnected')) : null}
+      darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+    >
+    <div className="space-y-3">
       {/* Why the last pick failed, from the shell (no bookmark, no result).
           Without this a failed pick looked exactly like a cancelled one. */}
       {status.pickError && (
@@ -163,7 +156,6 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
       )}
       {!status.connected ? (
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <p className={`text-xs ${textSecondary}`}>{ios ? t('directAccess.notConnectedFile') : t('directAccess.notConnected')}</p>
           <div className="flex gap-2">
             <button type="button" onClick={pick} disabled={busy || status.status === 'unknown'} className={button}>
               {ios ? t('directAccess.chooseFile') : t('directAccess.chooseFolder')}
@@ -202,28 +194,43 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
               {t('directAccess.disconnect')}
             </button>
           </div>
-          <div className={`pt-2 border-t ${borderClass} space-y-2`}>
-            <label className="flex items-start gap-3 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={!!status.encrypt || askPassphrase}
-                onChange={toggleEncrypt}
-                disabled={busy}
-                className="mt-0.5 w-4 h-4 rounded flex-shrink-0"
-                aria-label={t('directAccess.encrypt')}
-              />
-              <span className="min-w-0">
-                <span className={`text-sm ${textPrimary} flex items-center gap-1.5`}>
-                  <Lock size={12} className={textSecondary} />
-                  {t('directAccess.encrypt')}
-                </span>
-                <span className={`block text-xs ${textSecondary}`}>
-                  {status.encrypt ? t('directAccess.encryptOnHint') : t('directAccess.encryptHint')}
-                </span>
-              </span>
-            </label>
+          <SettingsCard
+            cardId="directAccessEncrypt"
+            icon={Lock}
+            title={t('directAccess.encrypt')}
+            hint={status.encrypt ? t('directAccess.encryptOnHint') : t('directAccess.encryptHint')}
+            checked={!!status.encrypt || askPassphrase}
+            onToggle={toggleEncrypt}
+            disabled={busy}
+            footer={removable ? (
+              <div className="space-y-2">
+                {removeStep === null && (
+                  <button type="button" onClick={() => setRemoveStep('confirm')} disabled={busy} className={`text-xs underline ${textSecondary}`}>
+                    {t('directAccess.removeEncryption')}
+                  </button>
+                )}
+                {removeStep === 'confirm' && (
+                  <>
+                    <p className={`text-xs ${textSecondary}`}>{t('directAccess.removeEncryptionConfirm')}</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={removeEncryption} disabled={busy} className={button}>{t('directAccess.removeEncryptionGo')}</button>
+                      <button type="button" onClick={() => setRemoveStep(null)} disabled={busy} className={button}>{t('common.cancel')}</button>
+                    </div>
+                  </>
+                )}
+                {removeStep && typeof removeStep === 'object' && (
+                  <p className={`text-xs ${removeStep.outcome === 'removed' || removeStep.outcome === 'already-plaintext' ? textSecondary : 'text-red-700 dark:text-red-300'}`} data-remove-outcome={removeStep.outcome}>
+                    {t(`directAccess.removeEncryptionOutcome.${removeStep.outcome}`, { detail: removeStep.detail ?? '' })}
+                    {' '}
+                    <button type="button" onClick={() => setRemoveStep(null)} className="underline">{t('common.ok')}</button>
+                  </p>
+                )}
+              </div>
+            ) : null}
+            darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+          >
             {askPassphrase && !status.encrypt && (
-              <form onSubmit={submitPassphrase} className="ml-7 space-y-2">
+              <form onSubmit={submitPassphrase} className="space-y-2">
                 <p className={`text-xs ${textSecondary}`}>{t('directAccess.encryptPassphraseHint')}</p>
                 <input
                   type="password"
@@ -248,35 +255,11 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
                 </div>
               </form>
             )}
-            {(crypto.hasEncryptionReady() || !!crypto.getSyncPassphrase()) && (
-              <div className="ml-7 space-y-2">
-                {removeStep === null && (
-                  <button type="button" onClick={() => setRemoveStep('confirm')} disabled={busy} className={`text-xs underline ${textSecondary}`}>
-                    {t('directAccess.removeEncryption')}
-                  </button>
-                )}
-                {removeStep === 'confirm' && (
-                  <>
-                    <p className={`text-xs ${textSecondary}`}>{t('directAccess.removeEncryptionConfirm')}</p>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={removeEncryption} disabled={busy} className={button}>{t('directAccess.removeEncryptionGo')}</button>
-                      <button type="button" onClick={() => setRemoveStep(null)} disabled={busy} className={button}>{t('common.cancel')}</button>
-                    </div>
-                  </>
-                )}
-                {removeStep && typeof removeStep === 'object' && (
-                  <p className={`text-xs ${removeStep.outcome === 'removed' || removeStep.outcome === 'already-plaintext' ? textSecondary : 'text-red-700 dark:text-red-300'}`} data-remove-outcome={removeStep.outcome}>
-                    {t(`directAccess.removeEncryptionOutcome.${removeStep.outcome}`, { detail: removeStep.detail ?? '' })}
-                    {' '}
-                    <button type="button" onClick={() => setRemoveStep(null)} className="underline">{t('common.ok')}</button>
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+          </SettingsCard>
         </>
       )}
     </div>
+    </SettingsCard>
   );
 };
 

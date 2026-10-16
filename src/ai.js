@@ -9,18 +9,47 @@ const DEFAULT_CONFIG = {
   apiKey: '',
   model: 'gpt-4o-mini',
   baseUrl: '',
+  // Every feature starts off: turning AI on before a key is entered must not
+  // switch on features that cannot run. A saved config keeps its own choices.
   features: {
-    voiceTaskInput: true,
-    morningSummary: true,
-    eveningReflection: true,
-    weeklySummary: true,
-    smartScheduling: true,
-    durationEstimate: true,
-    frameNudge: true,
-    aiReschedule: true,
-    aiSubtasks: true,
+    voiceTaskInput: false,
+    morningSummary: false,
+    eveningReflection: false,
+    weeklySummary: false,
+    smartScheduling: false,
+    durationEstimate: false,
+    frameNudge: false,
+    aiReschedule: false,
+    aiSubtasks: false,
   }
 };
+
+/**
+ * Whether the configured provider can be called: an API key, or Ollama, which
+ * runs locally and needs none (the same rule the briefings use before a call).
+ */
+export function aiHasCredentials(config) {
+  return config?.provider === 'ollama' || !!(config?.apiKey && String(config.apiKey).trim());
+}
+
+/**
+ * Is AI usable at all: switched on, with a provider that can answer. Every
+ * AI surface outside Settings asks this (or `aiFeatureOn`), never
+ * `config.enabled` alone, so switching AI on before a key is entered changes
+ * nothing in the app.
+ */
+export function aiActive(config) {
+  return !!config?.enabled && aiHasCredentials(config);
+}
+
+/**
+ * Is one AI feature on. A saved feature flag counts only while AI is active:
+ * configs saved before features defaulted off still carry `true` for every
+ * feature, and Settings shows those as off and locked until a key is set.
+ */
+export function aiFeatureOn(config, key) {
+  return aiActive(config) && !!config.features?.[key];
+}
 
 const PROVIDER_MODELS = {
   openai: [

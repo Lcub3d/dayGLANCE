@@ -33,7 +33,7 @@ shipped as #2078).
 │ ▸ Sync          ● │  └────────────────────────────────────────────┘  │
 │   Integrations    │  ┌────────────────────────────────────────────┐  │
 │   Backup & Restore│  │ 🗄 GLANCEvault                     [ off ] │  │
-│   Advanced        │  │   Paused · your connection is kept         │  │
+│                   │  │   Paused · your connection is kept         │  │
 │   About & Help    │  └────────────────────────────────────────────┘  │
 │                   │                                                  │
 └───────────────────┴──────────────────────────────────────────────────┘
@@ -52,15 +52,14 @@ shipped as #2078).
 
 | Topic | Contents | Today |
 |---|---|---|
-| **General** | Language; clock format; first day of week; home timezone; end of day; sounds; weather (on/off, location, unit); daily tips & quotes | Localization, Sound, Weather, Daily Content blocks |
+| **General** | Language; clock format; first day of week; home timezone; end of day; sounds; weather (on/off, location, unit); daily tips & quotes; Inbox (auto-archive) and Follow-ups after Sounds; global shortcuts (desktop, last) | Localization, Sound, Weather, Daily Content, Global Shortcuts blocks |
 | **Appearance** | Theme (Light / Dark / System); default view on load; views on this device; timeline size; tablet view defaults; GLANCE tab default | View Defaults, Tablet View Defaults, timeline size; theme from the header |
-| **Features** | One card each, each with its own switch: Goals & Projects, Routines, Habits, Frames, Multi-user (with the roster), Inbox (auto-archive); an **Experimental** group: JOBO, Aspire | Goals & Projects, Routines, Habit Tracking, Inbox, Experimental, Multi-user blocks |
-| **AI Features** | One card: provider, key, model, frame nudges, voice | AI Features block |
-| **Sync** | One card each: End-to-end encryption first (the passphrase both channels use), then WebDAV, GLANCEvault, iCloud (Apple only); Network proxy last (desktop, #2082), since it applies only to sync traffic | Cloud Sync block |
+| **Features** | One card each with its own switch: Goals & Projects, Routines, Habits, Multi-user (with the roster); an **Experimental** group last: JOBO, Aspire | Goals & Projects, Routines, Habit Tracking, Inbox, Experimental, Multi-user blocks |
+| **AI Features** | One card: provider, key, model, then each AI feature, all off by default and locked until the provider has a key (Ollama needs none). The rest of the app asks `aiFeatureOn` in `src/ai.js`, so a feature saved on before that rule counts only once there is a key, and AI switched on with every feature off changes nothing | AI Features block |
+| **Sync** | End-to-end encryption, WebDAV, GLANCEvault, Direct Access, Network proxy (desktop, #2082) and the private-address grants, iCloud (Apple only), each saving on its own (a card's Save and Cancel show while it has unsaved changes; `sync/syncFormPlan.js` keeps the encryption flag and the WebDAV connection, which share one stored object, from overwriting each other); Sync diagnostics last | Cloud Sync block |
 | **Integrations** | One card each: Calendars (CalDAV task calendar, ICS feeds, device calendars, file import), Obsidian, Todoist, TRMNL, GLANCE apps (intents), Local Integrations (MCP), Android Automation (Android only) | Calendar Sync, Obsidian, Todoist, TRMNL, GLANCE Integrations, Local Integrations, Automation Intents blocks |
 | **Notifications** | Cards: Reminders, Weekly Review, hyperGLANCE Sessions (each with its own switch) | The header bell's dialog |
 | **Backup & Restore** | Auto-Backup as one card holding cards for Local Backups and Remote Backups (each with a switch), Folder Backup (web only, its own connect / disconnect) and Backup history (restore and delete); then Export, Restore and Reset as one row | The header save icon's menu and the auto-backup manager |
-| **Advanced** | Global shortcuts (desktop); diagnostics | Global Shortcuts block |
 | **About & Help** | Version and update check; help; send feedback; privacy policy and terms | Update banner, help modal links |
 
 Multi-user is a card under Features rather than its own topic: it is a mode
@@ -182,6 +181,31 @@ row opens the same page component desktop shows on the right. Mobile-only
 pages that already exist as `variant="page"` (Todoist, Local Integrations)
 become the shared implementation.
 
+Done: the rows are the topics this device shows, each opening its page from
+`useSettingsSections`, the same sections the dialog draws. Syncing calendars
+stays a row above them (an action, not a page). Help & Feedback is gone
+from the phone: About & Help carries its links, the Getting Started
+checklist's switch and local storage use. The rows are alike; a failed sync
+marks Sync with the same red dot the dialog's list shows. A page opens at its
+top, and Back returns the list to where it was. Frames, Routines and Habits keep their own
+screens, which their tiles open. What only a phone had moved into the shared
+sections behind the same conditions: the Location block on General (phones
+have no header weather), the phone's view defaults on Appearance
+(`mobileViewDefaults`), the iOS Live Activity card on Notifications, and the
+native Obsidian vault actions (an Android phone picks the folder in the app's
+settings; every native app disconnects through its bridge).
+
+The cards that only native devices show are `SettingsCard`s too: iCloud sync
+(Apple) is a switch card; Direct Access (Android, iOS, desktop) is a card
+whose switch appears once a folder is connected, with its contents kept while
+off (`contentsWhenOff`) for changing the folder and disconnecting, and its
+encryption as a card inside it, and its switch shows in every state (off and
+not connected, turning it on offers the folder or file to pick); Automation
+intents (Android) is a collapsible card with a status dot like every other
+integration, its switch and warning inside. Integrations are collapsible
+cards with dots; switch cards belong to Sync and Features. Card titles wrap
+rather than truncate, so a long one reads whole on a phone.
+
 ## Search
 
 A search box at the top of the topic list. Each page declares its keywords
@@ -199,6 +223,21 @@ search works in every language.
 - the Obsidian header dot → Integrations → Obsidian;
 - existing "fix in settings" links on mobile.
 
+Done (`src/components/settings/settingsLink.js`): `openSettings` is on the
+app context. On desktop it opens the dialog at the topic; on a phone it opens
+the Settings tab on the topic's page. Either side reads the link once, scrolls
+to the section, opens the section's card if it starts folded, and clears it,
+so later visits open where the user left off. The links:
+
+- the header cloud and Obsidian buttons open Sync and Integrations → Obsidian
+  while their dot is red (an error, or a lost vault), and sync otherwise;
+- the MCP status modal links to Integrations → Local Integrations;
+- the Obsidian error toast has a Settings link to Integrations → Obsidian;
+- the calendar button, with nothing set up, opens Integrations → Calendar Sync;
+- the mobile timezone notice opens General.
+
+There is no cloud sync error toast; the header dot is that surface.
+
 ## Order of work
 
 Each step is one or more PRs, each shippable on its own.
@@ -210,6 +249,15 @@ Each step is one or more PRs, each shippable on its own.
    Tests per page: it renders, its controls are present, and its storage keys
    are untouched. Notifications and Backup & Restore join here; their header
    icons go when their pages land.
+   Done for desktop: each topic is a hook under
+   `src/components/settings/topics/` (`useGeneralTopic`, `useSyncTopic`, ...)
+   returning its sections, and `SettingsModal.jsx` only gathers them and draws
+   the shell. They are hooks rather than page components because the topic
+   list, its dots and search need every topic's `show` without rendering it,
+   and a form's unsaved edits have to survive switching topics. The one piece
+   of state two topics share, the GLANCE apps WebDAV form (Integrations edits
+   it, the multi-user card reads it), is `useIntentForm`, held once by the
+   dialog. Step 4 calls the same hooks from mobile.
 2. **Cards.** Sync first (with pausing, including the GLANCEvault change), then
    Integrations, then Features.
 3. **Theme: System**, with the migration above.

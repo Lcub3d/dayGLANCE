@@ -87,7 +87,7 @@ const DesktopLayout = () => {
     use24HourClock, setUse24HourClock,
     homeTimezone,
     minimizedSections, setMinimizedSections,
-    showSettings, setShowSettings,
+    showSettings, setShowSettings, openSettings,
     collapsedSettings, setCollapsedSettings,
     soundEnabled, setSoundEnabled,
     updateInfo, setUpdateInfo,
@@ -575,7 +575,7 @@ const DesktopLayout = () => {
                 if (calSyncConfigured) {
                   syncAll();
                 } else {
-                  setShowSettings(true);
+                  openSettings('integrations', 'calendarSync');
                 }
               }}
               disabled={isSyncing}

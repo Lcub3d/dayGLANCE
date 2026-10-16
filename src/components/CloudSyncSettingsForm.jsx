@@ -5,6 +5,7 @@ import { setupEncryptionKey, setSyncPassphrase, clearEncryptionKey, getSyncPassp
 import { directAccessEncryptsWrites } from '../sync/directAccessTransport.js';
 import { getStoredVaultConfig, setVaultConfig, planVaultSave } from '../sync/vaultConfig.js';
 import SettingsCard from './settings/SettingsCard.jsx';
+import { webdavSaveConfig, encryptionSaveConfig, webdavDirty, encryptionDirty } from '../sync/syncFormPlan.js';
 import { createDbEngine, resetDbRootKey, resetVaultSyncCursor } from '../sync/dbEngine.js';
 import { testVaultConnection } from '../sync/vaultConnectionTest.js';
 import { testFileTierConnection, providerServerUrl, BLOCKED_PRIVATE_ADDRESS } from '../sync/proxyTrustPreflight.js';
@@ -14,9 +15,10 @@ import { normalizeSyncFolder } from '../utils/syncFolder.js';
 import { useTranslation } from 'react-i18next';
 
 // Cloud sync settings form (extracted to avoid hooks-in-conditional issues)
-const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderClass, hoverBg, cloudSyncConfig, setCloudSyncConfig, cloudSyncTest, cloudSyncNow, provider, currentProvider, onClose, cloudSyncLastSynced, cloudSyncStatus, cloudSyncError, vaultSyncNow, vaultBootstrapSync, vaultStatus, vaultError, vaultLastSynced, vaultSkipped, onSyncKeyReady }) => {
+const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderClass, hoverBg, cloudSyncConfig, setCloudSyncConfig, cloudSyncTest, cloudSyncNow, provider, currentProvider, afterChannels, afterProxy, cloudSyncLastSynced, cloudSyncStatus, cloudSyncError, vaultSyncNow, vaultBootstrapSync, vaultStatus, vaultError, vaultLastSynced, vaultSkipped, onSyncKeyReady }) => {
   const { t } = useTranslation();
-  const [formData, setFormData] = useState(() => {
+  // The WebDAV fields as saved; also what the WebDAV card's Cancel puts back.
+  const savedFormData = () => {
     const initial = {
       provider: currentProvider,
       syncFolder: cloudSyncConfig?.syncFolder ?? 'GLANCE/dayglance',
@@ -26,7 +28,8 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
       p.configFields.forEach(f => { initial[f.key] = cloudSyncConfig?.[f.key] || ''; });
     });
     return initial;
-  });
+  };
+  const [formData, setFormData] = useState(savedFormData);
   const [encryptionEnabled, setEncryptionEnabled] = useState(cloudSyncConfig?.encryptionEnabled ?? false);
   // WebDAV on/off, independent of whether the connection fields are filled — lets a
   // device keep its WebDAV credentials but stop syncing (e.g. moving fully to
@@ -58,6 +61,10 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
   // but the LOGIC is the vault getSalt probe — see testVaultConnection).
   const [vaultTesting, setVaultTesting] = useState(false);
   const [vaultTestResult, setVaultTestResult] = useState(null);
+  // The sync passphrase, asked for in the GLANCEvault card itself when a new or
+  // edited connection needs it and this session does not have it.
+  const [vaultPassphrase, setVaultPassphrase] = useState('');
+  const [encryptionSaving, setEncryptionSaving] = useState(false);
   // Desktop-only (issue #1642): origins the user has permitted the Electron IPC
   // proxy to reach despite resolving to a private network address. The main
   // process owns the list and the consent dialog; this is a view over it.
@@ -179,9 +186,6 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
   const webdavConfigured = requiredFieldsFilled;
   // WebDAV syncs only when the user has it toggled on AND the connection is complete.
   const webdavActive = webdavEnabled && webdavConfigured;
-  // True when the user is turning a previously-active WebDAV sync off, so Save stays
-  // enabled even if nothing else (vault) is configured.
-  const webdavBeingDisabled = !!cloudSyncConfig?.enabled && !webdavEnabled;
 
   // When enabling encryption, require a passphrase (confirmed) on fresh enable.
   // When already enabled, allow saving without re-entering (passphrase field is optional).
@@ -202,8 +206,10 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
   // with a warning. Only meaningful once a URL is typed; empty is handled by vaultFilled.
   const vaultUrlCheck = classifyVaultUrl(vaultUrl);
   const vaultUrlOk = !vaultFilled || vaultUrlCheck.ok;
-  const passphraseAvailable = !!getSyncPassphrase() || passphrase.length > 0;
-  const vaultEncryptionReady = encryptionEnabled || alreadyEncrypted;
+  // Each card saves on its own, so GLANCEvault depends on encryption as SAVED,
+  // and takes the passphrase from its own field when the session has none.
+  const passphraseAvailable = !!getSyncPassphrase() || vaultPassphrase.length > 0;
+  const vaultEncryptionReady = !!alreadyEncrypted;
 
   // What Save does to the vault config (sync/vaultConfig.js planVaultSave):
   // switched off keeps the connection, paused; only a new or edited connection
@@ -225,8 +231,14 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
   // Save is enabled when EITHER transport is fully set up (vault no longer gated
   // on the WebDAV connection) OR the user is turning the vault OFF — so a
   // vault-only device can disable it even though nothing remains configured.
-  const vaultBeingDisabled = !!vaultOriginal?.enabled && !vaultEnabled;
-  const canSave = (webdavActive || vaultFilled || vaultBeingDisabled || webdavBeingDisabled) && passphraseValid && !passphraseMismatch && vaultReady && vaultUrlOk;
+  // Per card: what differs from saved (its Save and Cancel show) and whether it
+  // can be saved as it stands.
+  const encryptionIsDirty = encryptionDirty({ saved: cloudSyncConfig, encryptionEnabled, passphrase });
+  const encryptionCanSave = passphraseValid && !passphraseMismatch;
+  const webdavIsDirty = webdavDirty({ saved: cloudSyncConfig, form: formData, webdavEnabled, providers: cloudSyncProviders, normalizeFolder: normalizeSyncFolder });
+  const webdavCanSave = webdavEnabled ? webdavConfigured : true;
+  const vaultIsDirty = vaultChanged;
+  const vaultCanSave = (vaultEnabled ? vaultFilled : true) && vaultUrlOk && vaultReady;
 
   // On desktop, the pre-flight reports a private-network server the proxy would
   // refuse, instead of the synthetic 400 the probe gets back from it (#2024).
@@ -244,49 +256,68 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
     }
   };
 
-  const handleSave = async () => {
+  // ── Saves, one per card ───────────────────────────────────────────────
+  // End-to-end encryption: sets up, re-enters or clears the key, and stores the
+  // flag over the SAVED WebDAV config (sync/syncFormPlan.js), so unsaved WebDAV
+  // edits are not stored with it.
+  const handleSaveEncryption = async () => {
+    setEncryptionSaving(true);
+    try {
+      if (encryptionEnabled) {
+        if (passphraseRequired && passphrase) {
+          // First-time setup: generate salt + derive + cache key (also sets the session passphrase).
+          await setupEncryptionKey(passphrase);
+        } else if (passphrase) {
+          // Re-entering the passphrase on an already-encrypted setup (new device).
+          setSyncPassphrase(passphrase);
+        }
+        // If already encrypted and no passphrase entered, leave the session key as-is.
+      } else if (alreadyEncrypted && !directAccessEncryptsWrites()) {
+        // User disabled encryption. The Direct Access file uses the same key
+        // (docs/direct-access-sync.md, Phase 6): while its switch is on, the key
+        // stays, or that device would prompt again for the passphrase it has.
+        await clearEncryptionKey();
+      }
+      setCloudSyncConfig(encryptionSaveConfig({ saved: cloudSyncConfig, encryptionEnabled, providers: cloudSyncProviders, provider: currentProvider }));
+      onSyncKeyReady?.(encryptionEnabled);
+      setPassphrase('');
+      setPassphraseConfirm('');
+    } finally {
+      setEncryptionSaving(false);
+    }
+  };
+  const handleCancelEncryption = () => {
+    setEncryptionEnabled(!!cloudSyncConfig?.encryptionEnabled);
+    setPassphrase('');
+    setPassphraseConfirm('');
+  };
+
+  // WebDAV: stores the connection and on/off, enabled only when switched on AND
+  // complete, keeping the SAVED encryption flag. Switched off keeps the details.
+  const handleSaveWebdav = () => {
+    setCloudSyncConfig(webdavSaveConfig({ saved: cloudSyncConfig, form: formData, webdavEnabled, configured: webdavConfigured, normalizeFolder: normalizeSyncFolder }));
+    onSyncKeyReady?.(!!cloudSyncConfig?.encryptionEnabled);
+  };
+  const handleCancelWebdav = () => {
+    setFormData(savedFormData());
+    setWebdavEnabled(!!cloudSyncConfig?.enabled);
+    setTestResult(null);
+  };
+
+  // GLANCEvault: its own stored config (planVaultSave). Touches neither the
+  // WebDAV config nor the encryption flag.
+  const handleSaveVault = async () => {
     setVaultBootstrapError(null);
     // Refuse to save a vault whose URL would send the Bearer token over cleartext on
-    // the public internet (canSave already blocks this; this is the defensive guard).
+    // the public internet (vaultCanSave already blocks this; this is the defensive guard).
     if (vaultFilled && !vaultUrlCheck.ok) {
       setVaultBootstrapError(t(vaultUrlCheck.messageKey));
       return;
     }
-    // WebDAV is marked enabled only when the user toggled it on AND the connection is
-    // configured — so enabling GLANCEvault alone never writes a bogus enabled WebDAV
-    // config, and unchecking the toggle disables sync while keeping the credentials.
-    const newConfig = { ...formData, provider: formData.provider, enabled: webdavActive, encryptionEnabled, syncFolder: normalizeSyncFolder(formData.syncFolder) };
-
-    if (encryptionEnabled) {
-      if (passphraseRequired && passphrase) {
-        // First-time setup: generate salt + derive + cache key (also sets the session passphrase).
-        await setupEncryptionKey(passphrase);
-      } else if (passphrase) {
-        // Re-entering the passphrase on an already-encrypted setup (new device, or
-        // to make it available to GLANCEvault after a reload).
-        setSyncPassphrase(passphrase);
-      }
-      // If already encrypted and no passphrase entered, leave the session key as-is.
-    } else if (alreadyEncrypted && !directAccessEncryptsWrites()) {
-      // User disabled encryption. The Direct Access file uses the same key
-      // (docs/direct-access-sync.md, Phase 6): while its switch is on, the key
-      // stays, or that device would prompt again for the passphrase it has.
-      await clearEncryptionKey();
-    }
-
-    setCloudSyncConfig(newConfig);
-    onSyncKeyReady?.(encryptionEnabled);
-
-    // GLANCEvault is saved/cleared independently of the file engine. Only stored
-    // when the toggle is on; cleared (reverting to file-only) when off. Uses the
-    // hoisted nextVaultConfig/vaultChanged so the gate above and this save agree on
-    // exactly when the vault is changing (and therefore needs the passphrase).
-    const nextVault = nextVaultConfig;
-
     // The vault always shares the sync passphrase; make sure it is in the session
-    // before deriving the DB root key (covers re-entry on an already-encrypted setup).
-    if (vaultEnabled && passphrase) setSyncPassphrase(passphrase);
-    setVaultConfig(nextVault);
+    // before deriving the DB root key.
+    if (vaultEnabled && vaultPassphrase) setSyncPassphrase(vaultPassphrase);
+    setVaultConfig(nextVaultConfig);
 
     // A new or edited connection makes the entered passphrase authoritative: drop a cached
     // DB root key (in-memory + keystore/IndexedDB) so the next derive uses the
@@ -349,9 +380,39 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
 
     // A vault change requires a reload so the DB engine is (re)constructed with
     // the new transport config on next mount (mirrors lastGLANCE).
-    if (vaultChanged) { window.location.reload(); return; }
-    onClose();
+    if (vaultChanged) window.location.reload();
   };
+  const handleCancelVault = () => {
+    setVaultEnabled(!!vaultOriginal?.enabled);
+    setVaultUrl(vaultOriginal?.vaultUrl || '');
+    setVaultToken(vaultOriginal?.vaultToken || '');
+    setVaultAccountId(vaultOriginal?.accountId || '');
+    setVaultPassphrase('');
+    setVaultBootstrapError(null);
+    setVaultTestResult(null);
+  };
+
+  // A card's Save and Cancel, shown only while it differs from what is saved.
+  const cardActions = ({ dirty, canSave, busy, onSave, onCancel, saveLabel, id }) => (dirty ? (
+    <div className="flex items-center justify-end gap-2 pt-1" data-sync-card-actions={id}>
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={busy}
+        className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg transition-colors disabled:opacity-50`}
+      >
+        {t('common.cancel')}
+      </button>
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={!canSave || busy}
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+      >
+        {saveLabel || t('common.save')}
+      </button>
+    </div>
+  ) : null);
 
   // Manual "Sync now" triggers — WebDAV file tier and GLANCEvault DB tier.
   const handleSyncNow = async () => {
@@ -489,6 +550,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
           setPassphrase('');
           setPassphraseConfirm('');
         }}
+        footer={cardActions({ id: 'encryption', dirty: encryptionIsDirty, canSave: encryptionCanSave, busy: encryptionSaving, onSave: handleSaveEncryption, onCancel: handleCancelEncryption })}
         darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
       >
           <div className="space-y-3">
@@ -548,6 +610,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
         checked={webdavEnabled}
         onToggle={setWebdavEnabled}
         summary={!webdavEnabled && webdavConfigured ? t('sync.form.pausedKept') : null}
+        footer={cardActions({ id: 'webdav', dirty: webdavIsDirty, canSave: webdavCanSave, onSave: handleSaveWebdav, onCancel: handleCancelWebdav })}
         darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
       >
       {webdavEnabled && (
@@ -704,6 +767,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
             )}
           </div>
         ) : null}
+        footer={cardActions({ id: 'vault', dirty: vaultIsDirty, canSave: vaultCanSave, busy: vaultBootstrapping, onSave: handleSaveVault, onCancel: handleCancelVault, saveLabel: vaultBootstrapping ? t('sync.form.enabling') : null })}
         darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
       >
         <p className="text-xs text-amber-500 flex items-start gap-1.5">
@@ -798,10 +862,19 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                 {t('sync.form.vaultNeedsEncryption', { encryption: t('settings.enableE2EEncryption') })}
               </p>
             )}
-            {vaultEncryptionReady && vaultChanged && !passphraseAvailable && (
-              <p className="text-xs text-amber-500">
-                {t('sync.form.vaultNeedsPassphrase')}
-              </p>
+            {vaultEncryptionReady && vaultFilled && vaultConnectionChanged && !getSyncPassphrase() && (
+              <div>
+                <label className={`block text-sm ${textSecondary} mb-1`}>{t('sync.form.syncPassphraseLabel')}</label>
+                <input
+                  type="password"
+                  value={vaultPassphrase}
+                  onChange={(e) => setVaultPassphrase(e.target.value)}
+                  placeholder={t('sync.form.passphrasePlaceholderReenter')}
+                  data-vault-passphrase
+                  className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                />
+                <p className={`text-xs ${textSecondary} mt-1`}>{t('sync.form.vaultNeedsPassphrase')}</p>
+              </div>
             )}
             {vaultBootstrapError && (
               <p className="text-xs text-red-500">{vaultBootstrapError}</p>
@@ -842,27 +915,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
         )}
       </SettingsCard>
 
-      {/* Private addresses the desktop proxy may reach (#1642). Shared by
-          WebDAV and GLANCEvault, so it sits outside both sections. */}
-      {proxyTrust && trustedHosts.length > 0 && (
-        <div className={`border-t ${borderClass} pt-4 space-y-1`}>
-          <p className={sectionHeader}>{t('sync.form.vaultTrustedHostsTitle')}</p>
-          <ul className="space-y-1">
-            {trustedHosts.map((h) => (
-              <li key={h.origin} className="flex items-center justify-between gap-2">
-                <span className={`text-xs break-all ${textSecondary}`}>{h.origin}</span>
-                <button
-                  type="button"
-                  onClick={() => handleRevokePrivateAddress(h.origin)}
-                  className="text-xs text-red-500 hover:underline shrink-0"
-                >
-                  {t('sync.form.vaultTrustedHostRemove')}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {afterChannels}
 
       {/* Sync proxy (Electron): the outbound proxy server sync traffic
           connects through, as a card like the channels above. Its own Save:
@@ -981,21 +1034,30 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
         </SettingsCard>
       )}
 
-      <div className="flex justify-end gap-2 pt-2">
-        <button
-          onClick={onClose}
-          className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg transition-colors`}
-        >
-          {t('common.cancel')}
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={!canSave || vaultBootstrapping}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
-          {vaultBootstrapping ? t('sync.form.enabling') : ((cloudSyncConfig?.enabled || vaultOriginal?.enabled) ? t('common.save') : t('sync.form.saveEnable'))}
-        </button>
-      </div>
+      {/* Private addresses the desktop proxy may reach (#1642). Shared by
+          WebDAV and GLANCEvault, so it sits outside both sections. */}
+      {proxyTrust && trustedHosts.length > 0 && (
+        <div className={`border-t ${borderClass} pt-4 space-y-1`}>
+          <p className={sectionHeader}>{t('sync.form.vaultTrustedHostsTitle')}</p>
+          <ul className="space-y-1">
+            {trustedHosts.map((h) => (
+              <li key={h.origin} className="flex items-center justify-between gap-2">
+                <span className={`text-xs break-all ${textSecondary}`}>{h.origin}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRevokePrivateAddress(h.origin)}
+                  className="text-xs text-red-500 hover:underline shrink-0"
+                >
+                  {t('sync.form.vaultTrustedHostRemove')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {afterProxy}
+
     </div>
   );
 };

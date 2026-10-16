@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Bell, Zap } from 'lucide-react';
+import { BarChart3, Bell, Smartphone, Zap } from 'lucide-react';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import ClockTimePicker from './ClockTimePicker.jsx';
@@ -15,6 +15,7 @@ const RemindersSettings = () => {
   const {
     darkMode, cardBg, borderClass, textPrimary, textSecondary, hoverBg,
     isTablet, use24HourClock, formatTime,
+    isIOSApp, liveActivityEnabled, setLiveActivityEnabled,
   } = useDayPlannerCtx();
   const {
     showMorningTimePicker, setShowMorningTimePicker,
@@ -164,6 +165,21 @@ const RemindersSettings = () => {
                 </div>
               </div>
             </SettingsCard>
+
+            {/* Live Activity (iOS only): opt-in, default off, because the
+                compact island hides the cellular and wifi status icons. Its
+                own card, since it does not depend on reminders being on. */}
+            {isIOSApp && (
+            <SettingsCard
+              cardId="liveActivity"
+              icon={Smartphone}
+              title={t('settings.liveActivity')}
+              hint={t('settings.liveActivityDesc')}
+              checked={!!liveActivityEnabled}
+              onToggle={(next) => setLiveActivityEnabled(next)}
+              darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+            />
+            )}
 
             {/* Weekly Review */}
             <SettingsCard

@@ -102,7 +102,7 @@
       "accountIdPlaceholder": "Ідентифікатор облікового запису домогосподарства",
       "vaultReloadHint": "Збереження змін GLANCEvault перезавантажує застосунок, щоб рушії синхронізації відновилися.",
       "vaultNeedsEncryption": "GLANCEvault завжди наскрізно зашифрований. Увімкніть «{{encryption}}» вище та задайте ваш пароль синхронізації, щоб його активувати.",
-      "vaultNeedsPassphrase": "Введіть ваш пароль синхронізації в розділі шифрування вище, щоб увімкнути GLANCEvault на цьому пристрої.",
+      "vaultNeedsPassphrase": "Ваша парольна фраза синхронізації, щоб підключити GLANCEvault на цьому пристрої.",
       "vaultUnreachableSimple": "Не вдалося зв’язатися зі сховищем за цією URL-адресою.",
       "vaultAllowPrivateAddress": "Дозволити цю адресу…",
       "vaultAllowPrivateAddressHint": "dayGLANCE попросить вас підтвердити. Дозволяйте лише адреси у вашій власній мережі.",
@@ -798,7 +798,8 @@
     },
     "theme": "Тема",
     "themeSystem": "Системна",
-    "glanceWebdavLog": "Журнал подій WebDAV"
+    "glanceWebdavLog": "Журнал подій WebDAV",
+    "aiNeedsKey": "Додайте ключ API вище, щоб увімкнути їх."
   },
   "dailyNotes": {
     "quickNotes": "Швидкі нотатки",

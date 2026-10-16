@@ -9,13 +9,17 @@
 // A static card can be `collapsible`: the title row opens and closes it, and
 // `defaultOpen` says how it starts. Closed, it shows the title and the badge
 // only, so a page of long sections stays a short list.
+// `footer` renders under the contents whether the card is on or off.
+// `contentsWhenOff` keeps a switched card's contents shown while it is off,
+// for a card whose off state still has things to do (Direct Access: change
+// the folder, disconnect).
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 export default function SettingsCard({
   icon: Icon, title, checked, onToggle, switchLabel, hint, summary, badge, darkMode,
   textPrimary, textSecondary, borderClass, children, cardId, disabled = false,
-  collapsible = false, defaultOpen = false,
+  collapsible = false, defaultOpen = false, footer = null, contentsWhenOff = false,
 }) {
   const canCollapse = collapsible && !onToggle;
   const [open, setOpen] = useState(defaultOpen);
@@ -25,7 +29,7 @@ export default function SettingsCard({
     <>
       {Icon && <Icon size={18} className={`${textSecondary} flex-shrink-0`} />}
       <div className={`flex-1 min-w-0 font-medium ${textPrimary} flex items-center gap-2`}>
-        <span className="truncate">{title}</span>
+        <span className="min-w-0 break-words">{title}</span>
         {badge}
       </div>
     </>
@@ -75,7 +79,10 @@ export default function SettingsCard({
           lines below the title read as one left-aligned column. */}
       {hint && expanded && <p className={`text-xs ${textSecondary} -mt-1.5`} data-settings-card-hint>{hint}</p>}
       {summary && <div className={`text-xs ${textSecondary}`} data-settings-card-summary>{summary}</div>}
-      {(onToggle ? checked : expanded) && children}
+      {(onToggle ? (checked || contentsWhenOff) : expanded) && children}
+      {/* Shown on or off: a card's own Save and Cancel, while it has unsaved
+          changes, must stay reachable after its switch is turned off. */}
+      {footer}
     </section>
   );
 }

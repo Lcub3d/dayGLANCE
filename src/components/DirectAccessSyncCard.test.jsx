@@ -23,11 +23,11 @@ const t = (k) => k;
 describe('DirectAccessSyncCard: the encryption switch', () => {
   it('renders the switch only once a folder is connected, reflecting the stored state and its hint', () => {
     const off = renderToStaticMarkup(<DirectAccessSyncCard {...props} transport={fakeTransport()} crypto={crypto(true)} />);
-    expect(off).toMatch(/aria-label="directAccess\.encrypt"/);
-    expect(off).not.toMatch(/checked=""/);
+    // A card switch (docs/settings-redesign.md), read by its aria state.
+    expect(off).toMatch(/aria-checked="false" aria-label="directAccess\.encrypt"/);
     expect(off).toContain('directAccess.encryptHint');
     const on = renderToStaticMarkup(<DirectAccessSyncCard {...props} transport={fakeTransport({ encrypt: true })} crypto={crypto(true)} />);
-    expect(on).toMatch(/checked=""/);
+    expect(on).toMatch(/aria-checked="true" aria-label="directAccess\.encrypt"/);
     expect(on).toContain('directAccess.encryptOnHint');
     expect(on).not.toMatch(/type="password"/);
     const disconnected = renderToStaticMarkup(<DirectAccessSyncCard {...props} transport={fakeTransport({ status: 'disconnected', connected: false, name: null })} crypto={crypto(true)} />);
@@ -55,6 +55,23 @@ describe('DirectAccessSyncCard: the encryption switch', () => {
     const r = await turnOnEncryption({ passphrase: 'x', confirm: 'x', setupEncryptionKey: async () => { throw new Error('keystore unavailable'); }, transport: failing, t });
     expect(r).toEqual({ ok: false, error: 'keystore unavailable' });
     expect(failing.setEncryptsWrites).not.toHaveBeenCalled();
+  });
+});
+
+describe('DirectAccessSyncCard: the card', () => {
+  it('is a Settings card with its switch in every state; connected and off, changing the folder and disconnecting stay in reach', () => {
+    const offCard = renderToStaticMarkup(<DirectAccessSyncCard {...props} transport={fakeTransport({ enabled: false })} crypto={crypto(true)} />);
+    expect(offCard).toContain('data-settings-card="directAccess"');
+    expect(offCard).toMatch(/aria-checked="false" aria-label="directAccess\.title"/);
+    expect(offCard).toContain('directAccess.changeFolder');
+    expect(offCard).toContain('directAccess.disconnect');
+    const disconnected = renderToStaticMarkup(<DirectAccessSyncCard {...props} transport={fakeTransport({ status: 'disconnected', connected: false, name: null })} crypto={crypto(true)} />);
+    // Not connected: the switch is there, off, saying so; turning it on
+    // shows the folder choice (choosing is local state, not rendered here).
+    expect(disconnected).toContain('data-settings-card-state="off"');
+    expect(disconnected).toMatch(/aria-checked="false" aria-label="directAccess\.title"/);
+    expect(disconnected).toContain('directAccess.notConnected');
+    expect(disconnected).not.toContain('directAccess.chooseFolder');
   });
 });
 

@@ -102,7 +102,7 @@
       "accountIdPlaceholder": "Identyfikator konta domowego",
       "vaultReloadHint": "Zapisanie zmiany GLANCEvault ponownie uruchamia aplikację, aby mechanizmy synchronizacji zostały uruchomione od nowa.",
       "vaultNeedsEncryption": "GLANCEvault jest zawsze szyfrowany end-to-end. Włącz „{{encryption}}” powyżej i ustaw hasło synchronizacji, aby go aktywować.",
-      "vaultNeedsPassphrase": "Podaj swoje hasło synchronizacji w sekcji szyfrowania powyżej, aby włączyć GLANCEvault na tym urządzeniu.",
+      "vaultNeedsPassphrase": "Twoje hasło synchronizacji, aby połączyć GLANCEvault na tym urządzeniu.",
       "vaultUnreachableSimple": "Nie można połączyć się z magazynem pod tym adresem URL.",
       "vaultAllowPrivateAddress": "Zezwól na ten adres…",
       "vaultAllowPrivateAddressHint": "dayGLANCE poprosi o potwierdzenie. Zezwalaj tylko na adresy we własnej sieci.",
@@ -794,7 +794,8 @@
     },
     "theme": "Motyw",
     "themeSystem": "Systemowy",
-    "glanceWebdavLog": "Dziennik zdarzeń WebDAV"
+    "glanceWebdavLog": "Dziennik zdarzeń WebDAV",
+    "aiNeedsKey": "Dodaj powyżej klucz API, aby je włączyć."
   },
   "dailyNotes": {
     "quickNotes": "Szybkie notatki",

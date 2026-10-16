@@ -92,7 +92,7 @@
       "accountIdPlaceholder": "ID da conta do agregado",
       "vaultReloadHint": "Salvar uma alteração do GLANCEvault recarrega o aplicativo para que os motores de sincronização sejam reconstruídos.",
       "vaultNeedsEncryption": "O GLANCEvault está sempre criptografado de ponta a ponta. Ative \"{{encryption}}\" acima e defina sua frase de sincronização para ativá-lo.",
-      "vaultNeedsPassphrase": "Digite sua frase de sincronização na seção de criptografia acima para ativar o GLANCEvault neste dispositivo.",
+      "vaultNeedsPassphrase": "Sua frase-senha de sincronização, para conectar o GLANCEvault neste dispositivo.",
       "vaultUnreachableSimple": "Não foi possível alcançar o vault neste URL.",
       "vaultAllowPrivateAddress": "Permitir este endereço…",
       "vaultAllowPrivateAddressHint": "O dayGLANCE pedirá sua confirmação. Permita apenas endereços da sua própria rede.",
@@ -775,7 +775,8 @@
     },
     "theme": "Tema",
     "themeSystem": "Sistema",
-    "glanceWebdavLog": "Registro de eventos WebDAV"
+    "glanceWebdavLog": "Registro de eventos WebDAV",
+    "aiNeedsKey": "Adicione uma chave de API acima para ativá-los."
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",

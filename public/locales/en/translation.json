@@ -92,7 +92,7 @@
       "accountIdPlaceholder": "Household account id",
       "vaultReloadHint": "Saving a GLANCEvault change reloads the app so the sync engines reconstruct.",
       "vaultNeedsEncryption": "GLANCEvault is always end-to-end encrypted. Turn on \"{{encryption}}\" above and set your sync passphrase to enable it.",
-      "vaultNeedsPassphrase": "Enter your sync passphrase in the encryption section above to enable GLANCEvault on this device.",
+      "vaultNeedsPassphrase": "Your sync passphrase, to connect GLANCEvault on this device.",
       "vaultUnreachableSimple": "Could not reach the vault at this URL.",
       "vaultAllowPrivateAddress": "Allow this address…",
       "vaultAllowPrivateAddressHint": "dayGLANCE will ask you to confirm. Only allow addresses on your own network.",
@@ -775,7 +775,8 @@
     },
     "theme": "Theme",
     "themeSystem": "System",
-    "glanceWebdavLog": "WebDAV event log"
+    "glanceWebdavLog": "WebDAV event log",
+    "aiNeedsKey": "Add an API key above to turn these on."
   },
   "dailyNotes": {
     "quickNotes": "Quick Notes",

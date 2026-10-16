@@ -92,7 +92,7 @@
       "accountIdPlaceholder": "ID de cuenta del hogar",
       "vaultReloadHint": "Al guardar un cambio de GLANCEvault, la app se recarga para que los motores de sincronización se reconstruyan.",
       "vaultNeedsEncryption": "GLANCEvault siempre está cifrado de extremo a extremo. Activa \"{{encryption}}\" arriba y establece tu frase de contraseña de sincronización para activarlo.",
-      "vaultNeedsPassphrase": "Introduce tu frase de contraseña de sincronización en la sección de cifrado de arriba para activar GLANCEvault en este dispositivo.",
+      "vaultNeedsPassphrase": "Tu frase de contraseña de sincronización, para conectar GLANCEvault en este dispositivo.",
       "vaultUnreachableSimple": "No se pudo conectar con el vault en esta URL.",
       "vaultAllowPrivateAddress": "Permitir esta dirección…",
       "vaultAllowPrivateAddressHint": "dayGLANCE te pedirá confirmación. Permite solo direcciones de tu propia red.",
@@ -775,7 +775,8 @@
     },
     "theme": "Tema",
     "themeSystem": "Sistema",
-    "glanceWebdavLog": "Registro de eventos WebDAV"
+    "glanceWebdavLog": "Registro de eventos WebDAV",
+    "aiNeedsKey": "Añade una clave de API arriba para activarlas."
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",

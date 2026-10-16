@@ -1481,40 +1481,23 @@ export default function useIntegrationsTopic({ intentForm, setIntentForm }) {
         <>
             {/* Automation intents (Tasker) — Android only. Opt-in gate for the
                 exported IntentReceiver + outbound RESULT/NOTIFY broadcasts.
-                A collapsible card like the other integrations; the warning sits
-                beside the checkbox that turns it on. */}
+                A switch card like the others; the warning is its summary, so
+                it is read before the switch turns it on. */}
             {isNativeAndroid() && (
             <SettingsCard
               cardId="automationIntents"
-              collapsible
               icon={Zap}
               title={t('settings.automationIntents')}
+              switchLabel={t('settings.automationIntentsToggle')}
               hint={t('settings.automationIntentsDesc')}
-              badge={automationIntentsEnabled ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
+              summary={t('settings.automationIntentsWarning')}
+              checked={automationIntentsEnabled}
+              onToggle={(v) => {
+                setAutomationIntentsEnabled(v);
+                nativeSetAutomationIntentsEnabled(v);
+              }}
               darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
-            >
-              <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass}`}>
-                <input
-                  type="checkbox"
-                  id="automation-intents-toggle"
-                  checked={automationIntentsEnabled}
-                  onChange={e => {
-                    const v = e.target.checked;
-                    setAutomationIntentsEnabled(v);
-                    nativeSetAutomationIntentsEnabled(v);
-                  }}
-                  className="mt-0.5 h-4 w-4 rounded"
-                />
-                <div>
-                  <label htmlFor="automation-intents-toggle" className={`text-sm font-medium ${textPrimary} cursor-pointer`}>
-                    {t('settings.automationIntentsToggle')}
-                  </label>
-                  <p className={`text-xs ${textSecondary} mt-0.5`}>
-                    {t('settings.automationIntentsWarning')}
-                  </p>
-                </div>
-              </div>
-            </SettingsCard>
+            />
             )}
         </>
       ),

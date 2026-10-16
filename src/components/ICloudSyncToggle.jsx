@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { CloudCog } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import SettingsCard from './settings/SettingsCard.jsx';
 import { isICloudSyncEnabled, setICloudSyncEnabled } from '../utils/icloudSyncPref.js';
 
 /**
@@ -32,27 +34,18 @@ const ICloudSyncToggle = ({ darkMode, textPrimary, textSecondary, borderClass })
     setEnabled(next);
   };
 
+  // A Settings card like every other channel (docs/settings-redesign.md):
+  // the switch in its title row, what on or off means under it.
   return (
-    <div className={`rounded-lg border ${borderClass} p-3`}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className={`text-sm font-medium ${textPrimary}`}>{t('icloudSync.title')}</p>
-          <p className={`text-xs ${textSecondary}`}>
-            {enabled ? t('icloudSync.onHint') : t('icloudSync.offHint')}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={toggle}
-          role="switch"
-          aria-checked={enabled}
-          aria-label={t('icloudSync.title')}
-          className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${enabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}
-        >
-          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${enabled ? 'left-5' : 'left-1'}`} />
-        </button>
-      </div>
-    </div>
+    <SettingsCard
+      cardId="icloudSync"
+      icon={CloudCog}
+      title={t('icloudSync.title')}
+      hint={enabled ? t('icloudSync.onHint') : t('icloudSync.offHint')}
+      checked={enabled}
+      onToggle={toggle}
+      darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+    />
   );
 };
 

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, Leaf, MoreHorizontal, Zap } from 'lucide-react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Leaf, MoreHorizontal, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -8,12 +8,30 @@ import { dateToString, formatShortDate } from '../utils/taskUtils.js';
 import { computeDaySummary } from '../utils/daySummary.js';
 import { formatDuration } from '../utils/formatDuration.js';
 import { HOUR_GUTTER_W } from '../constants/timeline.js';
+import { caretSpots, pickCaretSpot } from '../utils/stripCaret.js';
 
 // Collapse choice is a per-window view preference, same class as
 // minimizedSections. Default collapsed: the strip only collapses on touch
 // devices, where timeline vertical space is the scarce resource, and the
 // collapsed pill still carries the headline numbers.
 const COLLAPSE_KEY = 'day-planner-summary-strip-collapsed';
+
+// Desktop's own flag, for the gutter caret (#2118). A separate key because it
+// is a different control: a tablet turned between portrait (the touch pill)
+// and landscape (this caret) would otherwise have one choice drive both.
+// Default EXPANDED, unlike the touch strip: on desktop the strip used to be
+// always on, and it is the timeline's entry point for the day window.
+export const DESKTOP_COLLAPSE_KEY = 'day-planner-summary-strip-desktop-collapsed';
+
+// Where the caret sits in the hour gutter is measured, not assumed: see
+// utils/stripCaret.js.
+
+const readStored = (key) => {
+  try { return localStorage.getItem(key); } catch { return null; }
+};
+const writeStored = (key, value) => {
+  try { localStorage.setItem(key, value); } catch { /* the session keeps the in-memory choice */ }
+};
 
 // Exported (with summaryPillClass) so TitlebarSummaryStrip renders the exact
 // same pills — one definition, no drift between the strip and the title bar.
@@ -82,12 +100,21 @@ export default function SummaryStrip({ compact = false, fabClearance = false, st
   } = useFeaturesCtx();
   const { t } = useTranslation();
 
-  const [collapsed, setCollapsed] = useState(
-    () => compact && localStorage.getItem(COLLAPSE_KEY) !== '0',
-  );
+  // Desktop and landscape tablet: the floating, horizontal strip collapses
+  // into a caret over the hour gutter instead of into a pill (#2118). DAY view
+  // never scrolls, so anything the strip covers there cannot be reached; the
+  // gutter's foot is the one spot of a timeline nothing else uses.
+  const gutterCaret = !compact && !staticPlacement;
+  const collapseKey = compact ? COLLAPSE_KEY : DESKTOP_COLLAPSE_KEY;
+
+  const [collapsed, setCollapsed] = useState(() => (
+    compact ? readStored(COLLAPSE_KEY) !== '0'
+      : gutterCaret ? readStored(DESKTOP_COLLAPSE_KEY) === '1'
+      : false
+  ));
   const toggle = () => {
     setCollapsed((c) => {
-      localStorage.setItem(COLLAPSE_KEY, c ? '0' : '1');
+      writeStored(collapseKey, c ? '0' : '1');
       return !c;
     });
   };
@@ -164,8 +191,64 @@ export default function SummaryStrip({ compact = false, fabClearance = false, st
   // overlap did.
   const leftInset = staticPlacement ? undefined : gutterInset + 8;
 
+  // Nothing to fold away when the title bar carries the pills, and the empty-day
+  // hint stays out regardless: it is the timeline's only way to set a day
+  // window, and it disappears for good once one is set.
+  const showCaret = gutterCaret && !pillsHidden && !isEmptyHint;
+
+  // The caret prefers the gutter's right edge, beside the pills, and moves only
+  // when something marked `data-gutter-foot` is there (WEEK's end-hour toggle,
+  // or its last row's label when rows are short). Re-measured when the
+  // timeline resizes, re-renders or scrolls (a zoomed WEEK scrolls its foot
+  // into view), coalesced to one measurement a frame.
+  const containerRef = useRef(null);
+  const [caretSpot, setCaretSpot] = useState(() => caretSpots(gutterInset)[0]);
+  useLayoutEffect(() => {
+    if (!showCaret) return undefined;
+    const el = containerRef.current;
+    const host = el?.parentElement;
+    if (!el || !host) return undefined;
+    const spots = caretSpots(gutterInset);
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const marks = [...host.querySelectorAll('[data-gutter-foot]')].map((m) => m.getBoundingClientRect());
+      const spot = pickCaretSpot(spots, el.getBoundingClientRect(), marks);
+      setCaretSpot((prev) => (prev.left === spot.left && prev.bottom === spot.bottom ? prev : spot));
+    };
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(measure); };
+    measure();
+    const ro = new ResizeObserver(schedule);
+    ro.observe(host);
+    // Settles on its own: a measurement that changes the caret's style
+    // triggers one more, which finds the same spot and sets nothing.
+    const mo = new MutationObserver(schedule);
+    mo.observe(host, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+    host.addEventListener('scroll', schedule, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      mo.disconnect();
+      host.removeEventListener('scroll', schedule);
+    };
+  }, [showCaret, gutterInset]);
+
   return (
-    <div className={container} style={leftInset ? { paddingLeft: leftInset } : undefined}>
+    <div ref={containerRef} className={container} style={leftInset ? { paddingLeft: leftInset } : undefined}>
+      {showCaret && (
+        <button
+          onClick={toggle}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? t('strip.showSummary') : t('strip.hideSummary')}
+          title={collapsed ? t('strip.showSummary') : t('strip.hideSummary')}
+          className={`absolute pointer-events-auto w-5 h-[26px] rounded-full flex items-center justify-center border shadow-sm backdrop-blur-sm ${textSecondary} hover:opacity-80 ${
+            darkMode ? 'bg-gray-900/85 border-gray-700' : 'bg-white/90 border-stone-200'
+          }`}
+          style={{ left: caretSpot.left, bottom: caretSpot.bottom }}
+        >
+          {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+        </button>
+      )}
       {menuOpen && (
         <DayWindowMenu
           dateStr={dateStr}
@@ -174,7 +257,7 @@ export default function SummaryStrip({ compact = false, fabClearance = false, st
           anchorStyle={{ left: leftInset ?? 8 }}
         />
       )}
-      {/* Pills hidden, popover still mounted: the grid's START/END marker chips
+      {/* Pills hidden (or folded into the caret), popover still mounted: the grid's START/END marker chips
           open it through the shared featuresCtx flag and this is its only host
           on the timeline, so unmounting the whole strip would leave them dead. */}
       {pillsHidden ? null : isEmptyHint ? (
@@ -185,7 +268,7 @@ export default function SummaryStrip({ compact = false, fabClearance = false, st
           <MoreHorizontal size={13} className="flex-shrink-0" />
           {t('strip.setDayWindow')}
         </button>
-      ) : compact && collapsed ? (
+      ) : gutterCaret && collapsed ? null : compact && collapsed ? (
         <button onClick={toggle} className={`${pill} pointer-events-auto max-w-full text-xs`}>
           <ChevronUp size={13} className={`flex-shrink-0 ${textSecondary}`} />
           {unblockedLabel}

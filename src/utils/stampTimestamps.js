@@ -65,13 +65,23 @@
 // stale copy on a device that had not yet pulled newer ones, and the stale
 // copy then won everywhere: it reverted project task order across devices and
 // could as easily have resurrected a completion made elsewhere.
+// `deadline` is DEFAULTED for the starredDate reason, not stripped: setting one
+// is a real user edit that must re-stamp (the picker, and the editor's deadline
+// field, write it), but "no deadline" reaches storage two ways — the key absent
+// on a task that never had one, and an explicit `null` from a picker clear or
+// from a save of the editor's deadline field. Those are the SAME state, so
+// canonicalising
+// the pair keeps a save that merely passes the field through from re-stamping a
+// task nobody edited (a fabricated stamp that could out-rank a real completion
+// elsewhere — see the resurrection note above). A date, cleared or changed,
+// still differs from `null` and still stamps.
 function normalizeField(task) {
   // obsidianClearedTime is bookkeeping for the inbox merge (utils/inboxMove.js):
   // set by the move that already stamps, and cleared when the line is next
   // observed untimed. Clearing it is not an edit anyone should out-rank.
   const { lastModified: _omit, obsidianClearedTime: _marker, originalPlan: _baseline, deferrals: _slips, planTrail: _stops,
     obsidianNoteLinkSeen: _linkSeen, obsidianNoteLinkSeenAt: _linkSeenAt, ...rest } = task;
-  return { ...rest, notes: rest.notes ?? '', subtasks: rest.subtasks ?? [], archived: rest.archived ?? false, priority: rest.priority ?? 0, starredDate: rest.starredDate ?? null };
+  return { ...rest, notes: rest.notes ?? '', subtasks: rest.subtasks ?? [], archived: rest.archived ?? false, priority: rest.priority ?? 0, starredDate: rest.starredDate ?? null, deadline: rest.deadline ?? null };
 }
 
 // Order-INSENSITIVE stringify of the normalized task. A defaulted field (archived,

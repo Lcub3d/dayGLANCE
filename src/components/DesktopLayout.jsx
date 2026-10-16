@@ -891,9 +891,15 @@ const DesktopLayout = () => {
                         the desktop layout, and takes the desktop strip.
                         titlebarPills lets it stand down for today while the
                         macOS title bar carries the same numbers — always false
-                        on a tablet, since that bar is Electron-on-macOS only. */}
+                        on a tablet, since that bar is Electron-on-macOS only.
+                        The desktop strip collapses into a caret at the foot of
+                        the hour gutter, placed clear of whatever the view
+                        hangs there (utils/stripCaret.js). Keyed on the variant so a tablet
+                        turning between the two remounts it and reads the
+                        right collapse flag. */}
                     {effectiveViewMode !== 'sched' && effectiveViewMode !== 'month' && effectiveViewMode !== 'jobo' && (
                       <SummaryStrip
+                        key={isTablet && !isLandscape ? 'compact' : 'desktop'}
                         compact={isTablet && !isLandscape}
                         titlebarPills={titlebarPills}
                       />

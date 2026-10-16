@@ -2189,6 +2189,8 @@
     "hideCompleted": "Сховати завершені"
   },
   "strip": {
+    "showSummary": "Показати підсумок дня",
+    "hideSummary": "Сховати підсумок дня",
     "unblocked": "вільно",
     "effort": "Зусилля",
     "restore": "Відпочинок",
@@ -2781,6 +2783,7 @@
       "toInbox": "«{{title}}» переміщено у «Вхідні»",
       "toBucket": "«{{title}}» додано до списку бажань",
       "scheduled": "Заплановано «{{title}}»",
+      "scheduledDroppedDeadline": "Заплановано «{{title}}» (дедлайн прибрано)",
       "postponed": "«{{title}}» перенесено на завтра",
       "deadlineSet": "Встановлено дедлайн для «{{title}}»",
       "deadlinePostponed": "Дедлайн «{{title}}» перенесено на {{date}}",

@@ -99,7 +99,16 @@ const SchedDashboard = () => {
                 </span>
               </div>
               {overdueTasks.map(task => (
-                <SchedTaskCard key={task.id} task={task} showProject showOverdueDate onSchedule={rescheduleToToday} />
+                <SchedTaskCard
+                  key={task.id}
+                  task={task}
+                  showProject
+                  showOverdueDate
+                  // An Inbox deadline row is an inbox task wearing the overdue
+                  // marker: it opens as one, and its deadline button stays live.
+                  isInbox={task._overdueType === 'deadline'}
+                  onSchedule={rescheduleToToday}
+                />
               ))}
             </div>
           )}

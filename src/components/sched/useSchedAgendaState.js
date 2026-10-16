@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { dateToString, extractTags } from '../../utils/taskUtils.js';
+import { notBucketed } from '../../utils/bucketList.js';
 import { EMPTY_SCHED_FILTERS, hasActiveSchedFilters, taskMatchesSchedFilters, limitRecurringToNextInstance, schedFiltersEqual, isPastEvent, schedRollingWindow } from '../../utils/schedAgenda.js';
 
 export const INITIAL_DAYS = 14;
@@ -197,21 +198,40 @@ export default function useSchedAgendaState({ dateRange } = {}) {
   // agenda (the month view's day sheet) shows them only when its range
   // starts today: today's sheet is today's agenda, overdue included, and any
   // other day's sheet is just that day.
+  //
+  // The section holds BOTH kinds of lateness the app knows: a scheduled task
+  // whose day is behind us, and an Inbox task whose deadline has passed. The
+  // second was missing here — the DAY view's overdue list has always had it
+  // (utils/getOverdueTasks.js), so an Inbox deadline task nagged in DAY and
+  // vanished from SCHED. The deadline is the Inbox's own late signal, and
+  // `_overdueType` says which kind a row is, because the card reads it.
   const overdueTasks = useMemo(() => {
     const todayStr = dateToString(new Date());
     if (scoped && scopeFrom !== todayStr) return [];
     const windowStartStr = scoped ? scopeFrom : dateToString(selectedDate);
-    return tasks
+    const overdueScheduled = tasks
       .filter(task =>
         task.date && task.date < todayStr && task.date < windowStartStr &&
         !task.completed && !task.archived && !task.isExample && !task.imported &&
         isVisibleForUser(task))
       .filter(task => taskMatchesSchedFilters(task, filters))
       .sort((a, b) => a.date.localeCompare(b.date) || (a.startTime || '').localeCompare(b.startTime || ''));
-  }, [scoped, scopeFrom, tasks, selectedDate, filters, isVisibleForUser]);
+    const overdueDeadlines = unscheduledTasks
+      .filter(task =>
+        notBucketed(task) && task.deadline && task.deadline < todayStr &&
+        !task.completed && !task.archived && !task.isExample &&
+        isVisibleForUser(task))
+      .filter(task => taskMatchesSchedFilters(task, filters))
+      .sort((a, b) => a.deadline.localeCompare(b.deadline))
+      .map(task => ({ ...task, _overdueType: 'deadline' }));
+    return [...overdueScheduled, ...overdueDeadlines];
+  }, [scoped, scopeFrom, tasks, unscheduledTasks, selectedDate, filters, isVisibleForUser]);
 
-  // Moves an overdue/agenda task to today's next open quarter-hour slot.
-  const rescheduleToToday = (task) => scheduleTaskAtNextSlot(task.id, false);
+  // Moves an overdue/agenda task to today's next open quarter-hour slot. An
+  // Inbox row (the deadline kind) has to be scheduled AS an inbox task, or the
+  // write would look for it in the scheduled list and find nothing.
+  const rescheduleToToday = (task) =>
+    scheduleTaskAtNextSlot(task.id, task._overdueType === 'deadline');
 
   const addTaskOnDay = (dateStr) => {
     setNewTask({ title: '', startTime: '09:00', duration: 30, date: dateStr, isAllDay: false, recurrence: null });

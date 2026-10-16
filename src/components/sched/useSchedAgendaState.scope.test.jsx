@@ -34,8 +34,8 @@ const Probe = ({ options }) => {
   const s = useSchedAgendaState(options);
   return <pre>{JSON.stringify({ scoped: s.scoped, days: s.visibleDays.map((d) => `${d.dateStr}:${d.tasks.map((t) => t.id).join('')}:${d.deadlineTasks.map((t) => t.id).join('')}`), overdue: s.overdueTasks.map((t) => t.id) })}</pre>;
 };
-const probe = (options) => JSON.parse(renderToStaticMarkup(
-  <DayPlannerContext.Provider value={planner}><FeaturesContext.Provider value={features}><Probe options={options} /></FeaturesContext.Provider></DayPlannerContext.Provider>,
+const probe = (options, overrides = {}) => JSON.parse(renderToStaticMarkup(
+  <DayPlannerContext.Provider value={{ ...planner, ...overrides }}><FeaturesContext.Provider value={features}><Probe options={options} /></FeaturesContext.Provider></DayPlannerContext.Provider>,
 ).replace(/<[^>]+>/g, '').replace(/&quot;/g, '"'));
 
 // The overdue section is the one thing this hook resolves against the REAL
@@ -90,5 +90,35 @@ describe('useSchedAgendaState dateRange', () => {
 
   it('treats an incomplete range as no range', () => {
     expect(probe({ dateRange: { from: '2026-09-16' } }).scoped).toBe(false);
+  });
+});
+
+// #2116 review: the Overdue section holds both kinds of lateness — a scheduled
+// task whose day is behind us, and an INBOX task whose deadline has passed. The
+// DAY view has always listed the second (utils/getOverdueTasks.js); the agenda
+// did not, so the same task nagged in DAY and disappeared from SCHED.
+describe('useSchedAgendaState overdue includes past-deadline inbox tasks', () => {
+  const unscheduled = [
+    { id: 'late', title: 'Late', deadline: '2026-09-02', completed: false },
+    { id: 'due-today', title: 'Due today', deadline: '2026-09-12', completed: false },
+    { id: 'later', title: 'Due later', deadline: '2026-09-30', completed: false },
+    { id: 'done', title: 'Done', deadline: '2026-09-02', completed: true },
+    { id: 'someday', title: 'Someday', deadline: '2026-09-02', completed: false, bucketId: 'b2' },
+    { id: 'plain', title: 'No deadline', completed: false },
+  ];
+
+  it('lists exactly the past-deadline, incomplete, unbucketed one', () => {
+    // 'old' and 'a' are the scheduled kind and keep their order before it.
+    expect(probe(undefined, { unscheduledTasks: unscheduled }).overdue).toEqual(['old', 'a', 'late']);
+  });
+
+  it('is empty on a scoped day other than today, as the scheduled kind is', () => {
+    expect(probe({ dateRange: { from: '2026-09-16', to: '2026-09-16' } }, { unscheduledTasks: unscheduled }).overdue).toEqual([]);
+  });
+
+  it("rides into today's scoped agenda too", () => {
+    const today = dateToStr(new Date());
+    expect(probe({ dateRange: { from: today, to: today } }, { unscheduledTasks: unscheduled }).overdue)
+      .toEqual(['old', 'a', 'late']);
   });
 });

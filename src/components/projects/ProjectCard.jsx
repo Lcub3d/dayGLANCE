@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import ConfirmDialog from '../ConfirmDialog.jsx';
 import {
   AlertTriangle, BookOpen, Calendar, CheckCircle2, CheckSquare, ChevronDown,
-  Edit2, ExternalLink, Eye, EyeOff, FileText, GripVertical, LayoutDashboard,
+  Clock, Edit2, ExternalLink, Eye, EyeOff, FileText, GripVertical, LayoutDashboard,
   LogIn, Plus, Square, Trash2, X, Zap,
   Phone,
 } from 'lucide-react';
@@ -581,6 +581,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
               return (
                 <div
                   key={task.id}
+                  data-project-task={task.id}
                   data-drag-idx={draggable ? incompleteUnscheduledIdx : undefined}
                   draggable={rowDraggable}
                   onDragStart={rowDraggable ? e => handleDragStart(e, incompleteUnscheduledIdx) : undefined}
@@ -677,10 +678,20 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
                       )}
                     </div>
                   )}
-                  {/* Calendar badge for scheduled tasks — w-5 h-5 matches drag handle (p-1 + size-12) footprint exactly */}
+                  {/* Scheduled marker — w-5 h-5 matches drag handle (p-1 + size-12)
+                      footprint exactly. It is NOT a control, and it must not be
+                      mistaken for the dimmed deadline button that unscheduled
+                      rows carry in the same slot, so it uses a clock rather than
+                      a calendar and says what it means on hover (#2116 review). */}
                   {scheduled && (
-                    <div className={`flex-shrink-0 w-5 h-5 flex items-center justify-center ${textSecondary} opacity-40`}>
-                      <Calendar size={10} />
+                    <div
+                      className={`flex-shrink-0 w-5 h-5 flex items-center justify-center ${textSecondary} opacity-40`}
+                      title={t('planner.scheduled', 'Scheduled')}
+                      aria-label={t('planner.scheduled', 'Scheduled')}
+                      role="img"
+                      data-scheduled-marker
+                    >
+                      <Clock size={10} />
                     </div>
                   )}
                   {draggable && (

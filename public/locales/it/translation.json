@@ -2092,6 +2092,8 @@
     "hideCompleted": "Nascondi completate"
   },
   "strip": {
+    "showSummary": "Mostra riepilogo del giorno",
+    "hideSummary": "Nascondi riepilogo del giorno",
     "unblocked": "libero",
     "effort": "Sforzo",
     "restore": "Recupero",
@@ -2680,6 +2682,7 @@
       "toInbox": "«{{title}}» spostata in In arrivo",
       "toBucket": "«{{title}}» inviata alla Bucket List",
       "scheduled": "Pianificata «{{title}}»",
+      "scheduledDroppedDeadline": "Pianificata «{{title}}» (scadenza rimossa)",
       "postponed": "«{{title}}» rimandata a domani",
       "deadlineSet": "Impostata una scadenza per «{{title}}»",
       "deadlinePostponed": "Scadenza di «{{title}}» spostata al {{date}}",

@@ -2090,6 +2090,8 @@
     "hideCompleted": "Hide completed"
   },
   "strip": {
+    "showSummary": "Show day summary",
+    "hideSummary": "Hide day summary",
     "unblocked": "unblocked",
     "effort": "Effort",
     "restore": "Restore",
@@ -2678,6 +2680,7 @@
       "toInbox": "Moved \"{{title}}\" to the Inbox",
       "toBucket": "Sent \"{{title}}\" to the Bucket List",
       "scheduled": "Scheduled \"{{title}}\"",
+      "scheduledDroppedDeadline": "Scheduled \"{{title}}\" (deadline removed)",
       "postponed": "Postponed \"{{title}}\" to tomorrow",
       "deadlineSet": "Set a deadline on \"{{title}}\"",
       "deadlinePostponed": "Moved the deadline of \"{{title}}\" to {{date}}",

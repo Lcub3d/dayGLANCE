@@ -2090,6 +2090,8 @@
     "hideCompleted": "Ocultar concluídas"
   },
   "strip": {
+    "showSummary": "Mostrar resumo do dia",
+    "hideSummary": "Ocultar resumo do dia",
     "unblocked": "livre",
     "effort": "Esforço",
     "restore": "Descanso",
@@ -2678,6 +2680,7 @@
       "toInbox": "\"{{title}}\" movida para a caixa de entrada",
       "toBucket": "\"{{title}}\" enviada para a Bucket List",
       "scheduled": "\"{{title}}\" agendada",
+      "scheduledDroppedDeadline": "\"{{title}}\" agendada (prazo removido)",
       "postponed": "\"{{title}}\" adiada para amanhã",
       "deadlineSet": "Prazo definido para \"{{title}}\"",
       "deadlinePostponed": "Prazo de \"{{title}}\" movido para {{date}}",

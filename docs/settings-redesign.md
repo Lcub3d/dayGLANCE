@@ -192,6 +192,14 @@ have no header weather), the phone's view defaults on Appearance
 native Obsidian vault actions (an Android phone picks the folder in the app's
 settings; every native app disconnects through its bridge).
 
+The cards that only native devices show are `SettingsCard`s too: iCloud sync
+(Apple) is a switch card; Direct Access (Android, iOS, desktop) is a card
+whose switch appears once a folder is connected, with its contents kept while
+off (`contentsWhenOff`) for changing the folder and disconnecting, and its
+encryption as a card inside it; Automation intents (Android) is a switch card
+whose warning is its summary, read before it is turned on. Card titles wrap
+rather than truncate, so a long one reads whole on a phone.
+
 ## Search
 
 A search box at the top of the topic list. Each page declares its keywords

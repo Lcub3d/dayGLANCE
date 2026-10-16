@@ -19,6 +19,13 @@ describe('SettingsCard', () => {
     expect(render({ checked: false })).toContain('data-settings-card-state="off"');
   });
 
+  it('contentsWhenOff keeps the contents while off, the switch still saying off', () => {
+    const html = render({ checked: false, contentsWhenOff: true });
+    expect(html).toContain('data-body');
+    expect(html).toContain('data-settings-card-state="off"');
+    expect(html).toContain('aria-checked="false"');
+  });
+
   it('shows the summary when off, so a paused card says so', () => {
     expect(render({ checked: false, summary: 'Paused' })).toMatch(/data-settings-card-summary="true">Paused/);
   });

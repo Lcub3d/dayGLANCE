@@ -2189,6 +2189,8 @@
     "hideCompleted": "Сховати завершені"
   },
   "strip": {
+    "showSummary": "Показати підсумок дня",
+    "hideSummary": "Сховати підсумок дня",
     "unblocked": "вільно",
     "effort": "Зусилля",
     "restore": "Відпочинок",

@@ -2090,6 +2090,8 @@
     "hideCompleted": "Hide completed"
   },
   "strip": {
+    "showSummary": "Show day summary",
+    "hideSummary": "Hide day summary",
     "unblocked": "unblocked",
     "effort": "Effort",
     "restore": "Restore",

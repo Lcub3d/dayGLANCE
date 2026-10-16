@@ -2090,6 +2090,8 @@
     "hideCompleted": "隐藏已完成"
   },
   "strip": {
+    "showSummary": "显示当日摘要",
+    "hideSummary": "隐藏当日摘要",
     "unblocked": "未占用",
     "effort": "投入",
     "restore": "恢复",

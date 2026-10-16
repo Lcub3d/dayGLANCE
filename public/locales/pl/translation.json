@@ -2183,6 +2183,8 @@
     "hideCompleted": "Ukryj ukończone"
   },
   "strip": {
+    "showSummary": "Pokaż podsumowanie dnia",
+    "hideSummary": "Ukryj podsumowanie dnia",
     "unblocked": "wolny czas",
     "effort": "Wysiłek",
     "restore": "Odpoczynek",

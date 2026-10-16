@@ -2090,6 +2090,8 @@
     "hideCompleted": "Erledigte ausblenden"
   },
   "strip": {
+    "showSummary": "Tagesübersicht anzeigen",
+    "hideSummary": "Tagesübersicht ausblenden",
     "unblocked": "frei",
     "effort": "Einsatz",
     "restore": "Erholung",

@@ -626,6 +626,7 @@ const WeekView = () => {
             >
               {edge && (
                 <button
+                  data-gutter-foot={atTopEdge ? undefined : ''}
                   onClick={() => setShowAllHours(v => !v)}
                   className={`absolute ${atTopEdge ? 'top-0.5' : 'bottom-0.5'} right-2 text-[10px] leading-none text-blue-500 hover:text-blue-400 transition-colors select-none`}
                   title={hiddenHere ? t('settings.weekTimelineHidden', { count: hiddenHere }) : undefined}
@@ -636,9 +637,12 @@ const WeekView = () => {
               {/* The top toggle stands in for its row's hour label, since the
                   two name the same line. The bottom one sits at the row's FOOT
                   and names the next line down, so that row still shows its own
-                  hour at its head like every other. */}
+                  hour at its head like every other. The bottom toggle and the
+                  last row's label are marked data-gutter-foot: the summary
+                  strip's caret measures them to stay clear (#2118). */}
               {!atTopEdge && hour % 3 === 0 && (
                 <span
+                  data-gutter-foot={hour === endHour - 1 ? '' : undefined}
                   className={`absolute top-0.5 right-2 text-[10px] leading-none ${textSecondary} select-none`}
                   style={zoom !== 1 ? { zoom } : undefined}
                 >

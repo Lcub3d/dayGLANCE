@@ -2775,6 +2775,7 @@
       "toInbox": "Przeniesiono „{{title}}” do skrzynki",
       "toBucket": "Przeniesiono „{{title}}” na listę marzeń",
       "scheduled": "Zaplanowano „{{title}}”",
+      "scheduledDroppedDeadline": "Zaplanowano „{{title}}” (termin usunięty)",
       "postponed": "Przełożono „{{title}}” na jutro",
       "deadlineSet": "Ustawiono termin dla „{{title}}”",
       "deadlinePostponed": "Przesunięto termin „{{title}}” na {{date}}",

@@ -2678,6 +2678,7 @@
       "toInbox": "« {{title}} » déplacée vers la boîte de réception",
       "toBucket": "« {{title}} » envoyée dans la Bucket List",
       "scheduled": "« {{title}} » planifiée",
+      "scheduledDroppedDeadline": "« {{title}} » planifiée (échéance supprimée)",
       "postponed": "« {{title}} » reportée à demain",
       "deadlineSet": "Échéance définie pour « {{title}} »",
       "deadlinePostponed": "Échéance de « {{title}} » déplacée au {{date}}",

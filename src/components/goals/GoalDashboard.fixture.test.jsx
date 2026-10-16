@@ -114,4 +114,38 @@ describe('goals-space test fixture', () => {
     expect(open).toHaveLength(5);
     expect(html).toContain(`Projects <span class="text-[11px] font-normal text-stone-500">${open.length}</span>`);
   });
+
+  // #2116 review: the scheduled marker in a project row must not read as a
+  // disabled deadline button, which is exactly what it looked like — the same
+  // Calendar glyph, in the same slot. It is now a clock with a tooltip, and the
+  // deadline button belongs to unscheduled rows alone.
+  it('a scheduled row carries a marker that cannot be mistaken for the deadline button', async () => {
+    const fund = byTitle('Build a 6-month emergency fund');
+    const project = data.projects.find(p => p.goalId === fund.id && p.status === 'active');
+    // The card folds after 3 rows, so give this project exactly the two under test.
+    const WITHOUT = (list) => list.filter(t => t.projectId !== project.id);
+    const onTheClock = { id: 'row-scheduled', title: 'On the clock', projectId: project.id, date: '2026-10-16', startTime: '09:00', duration: 30, completed: false };
+    const inTheInbox = { id: 'row-inbox', title: 'In the inbox', projectId: project.id, completed: false };
+    const html = await render({
+      ...data,
+      exportedAt: '2026-10-16T09:00:00.000Z',
+      tasks: [...WITHOUT(data.tasks), onTheClock],
+      unscheduledTasks: [...WITHOUT(data.unscheduledTasks), inTheInbox],
+    });
+    const row = (id) => {
+      const at = html.indexOf(`data-project-task="${id}"`);
+      expect(at, `${id} was not rendered`).toBeGreaterThan(-1);
+      const rest = html.slice(at);
+      const next = rest.indexOf('data-project-task="', 1);
+      return next === -1 ? rest : rest.slice(0, next);
+    };
+
+    const scheduledRow = row('row-scheduled');
+    expect(scheduledRow).toContain('data-scheduled-marker');
+    expect(scheduledRow).toContain('title="Scheduled"');
+    expect(scheduledRow).toContain('lucide-clock');
+    expect(scheduledRow).not.toMatch(/title="(Set deadline|Deadline:)/);
+
+    expect(row('row-inbox')).toMatch(/<button[^>]*title="Set deadline"/);
+  });
 });

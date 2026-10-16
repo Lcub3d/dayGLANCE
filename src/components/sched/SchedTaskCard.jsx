@@ -197,9 +197,11 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
         {/* Meta row — always rendered on editable tasks so cards stay uniform */}
         {(!isEvent || timeLabel) && (
           <span className={`text-sm ${textSecondary} flex items-center gap-3 min-w-0`} style={{ minHeight: '1.25rem' }}>
-            {showOverdueDate && task.date && (
+            {/* The row's own date: the scheduled day, or — for an Inbox task in
+                the Overdue section — the deadline that put it there. */}
+            {showOverdueDate && (task.deadline || task.date) && (
               <span className="flex-shrink-0 font-medium text-amber-500">
-                {formatLocalizedDate(new Date(task.date + 'T00:00:00'), { month: 'short', day: 'numeric' })}
+                {formatLocalizedDate(new Date((task.deadline || task.date) + 'T00:00:00'), { month: 'short', day: 'numeric' })}
               </span>
             )}
             {inProgress && (

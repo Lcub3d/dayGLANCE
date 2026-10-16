@@ -276,6 +276,51 @@ describe('stampTimestamps — starring IS an edit, but absent and null are not',
   });
 });
 
+describe('stampTimestamps — a deadline IS an edit, but absent and null are not', () => {
+  // An inbox deadline is a deliberate user action (the picker, or the editor's
+  // own field) and has to re-stamp so it wins on other devices. Only the
+  // absent/null pair is canonicalised: a task that never had one stores no key,
+  // while a clear — or merely saving the editor, which writes the field — puts
+  // an explicit `null` in storage. Those mean the same thing ("no deadline"), so
+  // reading the flip as a change would re-stamp a task nobody edited and let a
+  // fabricated stamp out-rank a real completion made elsewhere (see the
+  // resurrection note at the top of the module).
+  const DAY = '2026-09-30';
+
+  it('stamps a deadline being set, and names the field', () => {
+    const stored = { id: 1, title: 'Report', date: '2026-09-18', lastModified: ISO(60) };
+    let changedKeys = null;
+    const out = stampTimestamps([{ ...stored, deadline: DAY }], [stored], 'NOW', (info) => { changedKeys = info.changedKeys; });
+    expect(out[0].lastModified).toBe('NOW');
+    expect(changedKeys).toContain('deadline');
+  });
+
+  it('stamps a deadline being moved', () => {
+    const stored = { id: 1, title: 'Report', deadline: DAY, lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, deadline: '2026-10-07' }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe('NOW');
+  });
+
+  it('stamps a deadline being cleared', () => {
+    const stored = { id: 1, title: 'Report', deadline: DAY, lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, deadline: null }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe('NOW');
+  });
+
+  it('does NOT re-stamp when storage omits the key and memory says null', () => {
+    const stored = { id: 1, title: 'Report', lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, deadline: null }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe(stored.lastModified);
+  });
+
+  it('does NOT re-stamp the reverse flip either', () => {
+    const stored = { id: 1, title: 'Report', deadline: null, lastModified: ISO(60) };
+    const { deadline: _drop, ...without } = stored;
+    const out = stampTimestamps([without], [stored], 'NOW');
+    expect(out[0].lastModified).toBe(stored.lastModified);
+  });
+});
+
 describe('stampTimestamps — a deferral count changing is not an edit', () => {
   // The increment itself rides a reschedule, which stamps on its own. What this
   // guards is the count moving ALONE, which happens when a merge takes a higher

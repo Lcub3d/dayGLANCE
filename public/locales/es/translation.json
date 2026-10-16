@@ -2678,6 +2678,7 @@
       "toInbox": "Se movió «{{title}}» a la bandeja de entrada",
       "toBucket": "Se envió «{{title}}» a la Bucket List",
       "scheduled": "Se programó «{{title}}»",
+      "scheduledDroppedDeadline": "Se programó «{{title}}» (fecha límite quitada)",
       "postponed": "Se pospuso «{{title}}» a mañana",
       "deadlineSet": "Se fijó una fecha límite para «{{title}}»",
       "deadlinePostponed": "Se movió la fecha límite de «{{title}}» al {{date}}",

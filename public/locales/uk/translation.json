@@ -2781,6 +2781,7 @@
       "toInbox": "«{{title}}» переміщено у «Вхідні»",
       "toBucket": "«{{title}}» додано до списку бажань",
       "scheduled": "Заплановано «{{title}}»",
+      "scheduledDroppedDeadline": "Заплановано «{{title}}» (дедлайн прибрано)",
       "postponed": "«{{title}}» перенесено на завтра",
       "deadlineSet": "Встановлено дедлайн для «{{title}}»",
       "deadlinePostponed": "Дедлайн «{{title}}» перенесено на {{date}}",

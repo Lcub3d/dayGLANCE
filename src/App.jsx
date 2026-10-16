@@ -3861,8 +3861,18 @@ const DayPlanner = () => {
   };
   const saveMobileEditTaskFrom = (newTask, scope) => {
     if (!mobileEditingTask || !newTask.title.trim()) return;
-    pushUndo({ key: 'edited', title: cleanTitle(newTask.title) });
     const taskId = mobileEditingTask.id;
+    // An unscheduled task that this save puts on the clock (the last branch
+    // below: "Unscheduled" switched off on a project task) loses its
+    // inbox-only deadline, like every other scheduling path (#2116); the undo
+    // step says so.
+    const movesInboxToClock = !mobileEditIsInbox
+      && !(typeof taskId === 'string' && taskId.startsWith('recurring-'))
+      && !newTask.recurrence
+      && !(newTask.keepUnscheduled && newTask.projectId)
+      && !tasks.some(t => t.id === taskId);
+    const dropsDeadline = movesInboxToClock && !!unscheduledTasks.find(t => t.id === taskId)?.deadline;
+    pushUndo({ key: dropsDeadline ? 'scheduledDroppedDeadline' : 'edited', taskId, title: cleanTitle(newTask.title) });
     if (mobileEditIsInbox) {
       setUnscheduledTasks(prev => prev.map(t => t.id === taskId ? {
         ...t,
@@ -4030,11 +4040,14 @@ const DayPlanner = () => {
           transitionId: crypto.randomUUID(),
         } : t));
       } else {
-        // Task was unscheduled (e.g. a project task) — move it to the scheduled list
+        // Task was unscheduled (e.g. a project task) — move it to the scheduled
+        // list. Priority and deadline are inbox-only, so they stay behind, as
+        // on every other path that schedules an inbox task.
         const existing = unscheduledTasks.find(t => t.id === taskId);
+        const { priority: _priority, deadline: _deadline, ...scheduledFields } = existing || {};
         setUnscheduledTasks(prev => prev.filter(t => t.id !== taskId));
         setTasks(prev => [...prev, {
-          ...(existing || {}),
+          ...scheduledFields,
           id: taskId,
           title: cleanTitle(newTask.title),
           startTime: newTask.isAllDay ? '00:00' : newTask.startTime,

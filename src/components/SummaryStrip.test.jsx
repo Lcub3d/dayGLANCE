@@ -69,13 +69,8 @@ describe('SummaryStrip desktop gutter caret', () => {
     expect(html).not.toContain('#work');
   });
 
-  it('sits on the hour labels\' line in DAY and MULTI', async () => {
-    expect(await render()).toContain('left:12px;bottom:8px');
-  });
-
-  it('keeps left of WEEK\'s right-aligned labels, and lifts over its end-hour toggle', async () => {
-    expect(await render({ weekGutter: true })).toContain('left:6px;bottom:8px');
-    expect(await render({ weekGutter: true, liftCaret: true })).toContain('left:6px;bottom:14px');
+  it('starts at the gutter\'s right edge, beside the pills', async () => {
+    expect(await render()).toContain('left:38px;bottom:8px');
   });
 
   it('does not share the touch strip\'s flag', async () => {

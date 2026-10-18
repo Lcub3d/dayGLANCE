@@ -605,15 +605,18 @@ export default function useTaskActions({
       return;
     }
     const task = tasks.find(t => t.id === id);
-    if (!task || !task.startTime || !task.date) return;
+    // All-day tasks carry no meaningful start time: some sources (lastGLANCE
+    // intents among them) store it as null rather than '00:00', and they
+    // occupy no slot, so they skip the conflict check below.
+    if (!task || !task.date || (!task.startTime && !task.isAllDay)) return;
 
     const nextDay = new Date(task.date + 'T12:00:00');
     nextDay.setDate(nextDay.getDate() + 1);
     const nextDateStr = nextDay.toISOString().split('T')[0];
 
-    const { conflicted, conflictingEvent } = getAdjustedTimeForImportedConflicts(
-      id, task.startTime, task.duration, nextDateStr
-    );
+    const { conflicted, conflictingEvent } = task.isAllDay
+      ? { conflicted: false }
+      : getAdjustedTimeForImportedConflicts(id, task.startTime, task.duration, nextDateStr);
 
     if (conflicted) {
       playUISound('error');

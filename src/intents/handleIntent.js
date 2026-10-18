@@ -93,9 +93,12 @@ function rebuildTitle(cleanedTitle, tags) {
 function parseDue(due, allDay) {
   if (!due) return null;
 
+  // All-day tasks carry startTime '00:00', as every app-side create and edit
+  // writes them. A null start reads as "not scheduled" to postpone, the
+  // original-plan baseline and deferral tracking.
   const dateOnly = !due.includes('T');
   if (dateOnly || allDay) {
-    return { date: due.slice(0, 10), startTime: null, isAllDay: true };
+    return { date: due.slice(0, 10), startTime: '00:00', isAllDay: true };
   }
 
   const d = new Date(due);

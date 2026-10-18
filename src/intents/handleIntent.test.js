@@ -607,6 +607,9 @@ describe('handleIntent create execution', () => {
     expect(ctx._tasks).toHaveLength(1);
     expect(ctx._tasks[0].date).toBe('2026-06-10');
     expect(ctx._tasks[0].isAllDay).toBe(true);
+    // Same shape as an all-day task made in the app; a null start reads as
+    // unscheduled to the original-plan baseline and deferral tracking.
+    expect(ctx._tasks[0].startTime).toBe('00:00');
   });
 
   it('creates a timed scheduled task when due includes a time', async () => {

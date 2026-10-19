@@ -398,6 +398,11 @@ function upsertCollection(data, kind, value) {
     if (merged && merged.originalPlan === undefined && local && local.originalPlan !== undefined) {
       merged = { ...merged, originalPlan: local.originalPlan };
     }
+    // `clientId` (intents/launcherWrites.js) likewise: write-once at creation,
+    // never cleared, so absent on the winner means that device never had it.
+    if (merged && merged.clientId === undefined && local && local.clientId !== undefined) {
+      merged = { ...merged, clientId: local.clientId };
+    }
     // `starredDate` (utils/starredTasks.js) the same way. An unstar writes an
     // explicit null, so only an ABSENT value means the winner predates the field.
     if (merged && merged.starredDate === undefined && local && local.starredDate !== undefined) {

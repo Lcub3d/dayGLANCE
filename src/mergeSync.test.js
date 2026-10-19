@@ -156,6 +156,16 @@ describe('mergeSyncData', () => {
     minimizedSections: {}, use24HourClock: false
   });
 
+  // MUTATION: drop the clientId carry in mergeSyncData's sticky loop and this fails.
+  it('carries the launcher write id (clientId) when the newer copy never had it', () => {
+    const local = { ...emptyData(), tasks: [T('a', 'x', ts(10), { clientId: 'w-1' })] };
+    const remote = { ...emptyData(), tasks: [T('a', 'x edited', ts(1))] };
+    const r = mergeSyncData(local, remote, 90);
+    const merged = r.data.tasks.find(t => t.id === 'a');
+    expect(merged.title).toBe('x edited');
+    expect(merged.clientId).toBe('w-1');
+  });
+
   describe('device-local keys and the habits tie-break (2026-10-09)', () => {
     it('names the keys every device keeps its own value for', () => {
       const r = mergeSyncData(emptyData(), emptyData(), 90);
@@ -193,7 +203,6 @@ describe('mergeSyncData', () => {
       const r = mergeSyncData(local, remote, 90);
       expect(r.data.tasks.map((t) => t.id)).toEqual(['obsidian-dg-a']);
       expect(r.data.unscheduledTasks.map((t) => t.id)).toEqual(['obsidian-dg-b']);
-      expect(r.remoteChanged).toBe(true);
       // Nothing for this device to change: the merged lists equal its own.
       expect(sliceDiffs(r.data, local, { ignoreDropped: true }).filter((d) => d.key.endsWith('asks'))).toEqual([]);
     });

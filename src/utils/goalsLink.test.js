@@ -6,14 +6,14 @@ const q = (s) => new URL(`dayglance://x?${s}`).searchParams;
 describe('resolveGoalsLink', () => {
   it('a goal link opens the space on a tablet/desktop and the Goals tab on a phone', () => {
     expect(resolveGoalsLink('goal', q('id=g1'), { enabled: true, phone: false }))
-      .toEqual({ mobileTab: null, space: 'goals', focusGoalId: 'g1', focusProjectId: null });
+      .toEqual({ mobileTab: null, space: 'goals', focusGoalId: 'g1', focusProjectId: null, tab: null });
     expect(resolveGoalsLink('goal', q('id=g1'), { enabled: true, phone: true }))
-      .toEqual({ mobileTab: 'goals', space: null, focusGoalId: 'g1', focusProjectId: null });
+      .toEqual({ mobileTab: 'goals', space: null, focusGoalId: 'g1', focusProjectId: null, tab: null });
   });
 
   it('a project link focuses the project, not a goal', () => {
     expect(resolveGoalsLink('project', q('id=p%201'), { enabled: true, phone: true }))
-      .toEqual({ mobileTab: 'goals', space: null, focusGoalId: null, focusProjectId: 'p 1' });
+      .toEqual({ mobileTab: 'goals', space: null, focusGoalId: null, focusProjectId: 'p 1', tab: null });
   });
 
   it('does nothing while Goals & Projects is off, or for another action', () => {
@@ -23,7 +23,14 @@ describe('resolveGoalsLink', () => {
 
   it('with no id it still opens the space, unfocused', () => {
     expect(resolveGoalsLink('project', q(''), { enabled: true, phone: false }))
-      .toEqual({ mobileTab: null, space: 'goals', focusGoalId: null, focusProjectId: null });
+      .toEqual({ mobileTab: null, space: 'goals', focusGoalId: null, focusProjectId: null, tab: null });
+  });
+
+  it('tab names the panel when nothing is focused; an id outranks it; anything else is ignored', () => {
+    expect(resolveGoalsLink('goal', q('tab=goals'), { enabled: true, phone: true }).tab).toBe('goals');
+    expect(resolveGoalsLink('project', q('tab=projects'), { enabled: true, phone: false }).tab).toBe('projects');
+    expect(resolveGoalsLink('project', q('id=p1&tab=projects'), { enabled: true, phone: false }).tab).toBeNull();
+    expect(resolveGoalsLink('goal', q('tab=roadmap'), { enabled: true, phone: false }).tab).toBeNull();
   });
 });
 

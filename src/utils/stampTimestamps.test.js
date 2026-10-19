@@ -45,6 +45,13 @@ describe('stampTimestamps', () => {
   // no `archived` key in storage, but in-memory it carries `archived: false` (from
   // an unarchive elsewhere or a merge). Absent ≡ false, so the stamper must treat
   // them as equal and NOT fabricate a new lastModified on every cold-open.
+  // MUTATION: stop stripping clientId in normalizeField and this fails.
+  it('does NOT re-stamp a task that merely gained the launcher write id', () => {
+    const prior = { id: 'a', title: 'x', lastModified: ISO(10) };
+    const [out] = stampTimestamps([{ ...prior, clientId: 'w-1' }], [prior]);
+    expect(out.lastModified).toBe(prior.lastModified);
+  });
+
   it('does NOT re-stamp when storage lacks `archived` but memory has archived:false', () => {
     const stored = [{ id: 1, title: 'Inbox item', completed: false, lastModified: ISO(100) }];
     const inMemory = [{ id: 1, title: 'Inbox item', completed: false, notes: '', subtasks: [], archived: false, lastModified: ISO(100) }];

@@ -175,6 +175,11 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
           <GripVertical size={16} />
         </div>
       )}
+      {/* An imported event has nothing to tick off: a calendar glyph holds the
+          checkbox's slot so the card says so and the titles line up. */}
+      {isEvent && (
+        <Calendar size={22} aria-hidden="true" className={`flex-shrink-0 ${darkMode ? 'text-gray-600' : 'text-stone-300'}`} />
+      )}
       {!isEvent && (
         <button
           onClick={e => { e.stopPropagation(); toggleComplete(task.id, isInbox); }}

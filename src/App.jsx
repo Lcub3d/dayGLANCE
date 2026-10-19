@@ -36,6 +36,8 @@ import { createICloudSnapshotTransport } from './sync/icloudSnapshotTransport.js
 import { directAccessTransport } from './sync/directAccessTransport.js';
 import useDirectAccessStatus from './hooks/useDirectAccessStatus.js';
 import { evaluateSnapshotPush } from './utils/widgetSnapshotDedupe.js';
+import { buildLauncherSnapshot, launcherSnapshotFingerprint } from './utils/launcherSnapshot.js';
+import { readLauncherLedger } from './intents/launcherWrites.js';
 import { buildWidgetSnapshot, readCachedSteps } from './utils/widgetSnapshot.js';
 import { loadAlarmPrefs } from './utils/dialPrefs.js';
 import { buildProjectedDay, projectionDates, guardSnapshotSize } from './utils/widgetDayProjection.js';
@@ -527,6 +529,10 @@ const DayPlanner = () => {
   // A project to bring into view in the Goals & Projects space (the Project
   // widget's tap, utils/goalsLink.js). GoalDashboard consumes and clears it.
   const [goalsDashboardFocusProjectId, setGoalsDashboardFocusProjectId] = useState(null);
+  // A panel request without a focus ('goals' | 'projects'): a dayglance://goal
+  // or project link with tab= and no id (utils/goalsLink.js). GoalDashboard
+  // consumes and clears it.
+  const [goalsDashboardFocusTab, setGoalsDashboardFocusTab] = useState(null);
   // Project whose PLANNER dashboard is open — rendered at the app top level so
   // it stacks between the G&P dashboard (z-60) and the task editor (z-80).
   const [plannerProjectId, setPlannerProjectId] = useState(null);
@@ -1817,6 +1823,9 @@ const DayPlanner = () => {
     tasks, unscheduledTasks, recurringTasks, projects,
     setTasks, setUnscheduledTasks, setRecurringTasks,
     goals, addGoal, updateGoal, deleteGoal,
+    // The launcher's MOVE, RESIZE and TOGGLE_ROUTINE (intents/launcherWrites.js)
+    // read today's routines for their guards and toggle a completion.
+    todayRoutines, routinesDate, routineCompletions, routinesEnabled, toggleRoutineCompletion,
     navigate: tab => {
       const mobileTab = tab === 'glance' ? 'dayglance' : tab;
       setMobileActiveTab(mobileTab);
@@ -2606,6 +2615,8 @@ const DayPlanner = () => {
   // (MainActivity.storeDeepLink) — same quoted-string shape from the bridge.
   // Reassigned every render, so a caller always gets current handlers.
   const drainPendingDeepLinkRef = useRef(null);
+  // The last launcher snapshot's content fingerprint (utils/launcherSnapshot.js).
+  const lastLauncherSnapshotRef = useRef(null);
   // A widget's Done (the Up Next widget, iOS Control Center): complete, never
   // un-complete. The widget can be showing a task that another device or a
   // sync has already completed; toggling would reopen it. A task not found in
@@ -2628,6 +2639,15 @@ const DayPlanner = () => {
         else if (action === 'completeTask' && taskId) completeFromWidgetRef.current(taskId);
         else if (action === 'newScheduledTask') openNewTaskFormRef.current?.();
         else if (action === 'newInboxTask') openNewInboxTaskRef.current?.();
+        // The Inbox itself (the launcher's Inbox corner): the calendar space,
+        // whose sidebar holds it on desktop, and the Inbox tab on a phone or
+        // tablet, as the navigate helper does.
+        else if (action === 'inbox') {
+          setDesktopSpace('calendar');
+          setMobileActiveTab('inbox');
+          setTabletActiveTab('inbox');
+          setMobileSettingsView('main');
+        }
         // Through enterFocusMode, never the bare flag: it starts a fresh
         // session and derives the block's tasks. Setting showFocusMode alone
         // reopened the last session's leftovers (often an empty task list).
@@ -2659,6 +2679,7 @@ const DayPlanner = () => {
             if (areaFilterHides(goals.find(g => g.id === goalId), goalsAreaFilter, areas)) setGoalsAreaFilter('all');
             if (r.focusGoalId) setGoalsDashboardFocusId(r.focusGoalId);
             if (r.focusProjectId) setGoalsDashboardFocusProjectId(r.focusProjectId);
+            if (r.tab) setGoalsDashboardFocusTab(r.tab);
           }
         }
       } catch (_) {}
@@ -7388,6 +7409,43 @@ const DayPlanner = () => {
     routinesEnabled, routinesDate, todayRoutines, routineCompletions,
   ]);
 
+  // ── GLANCElauncher snapshot ──────────────────────────────────────────────
+  // The launcher's read model (utils/launcherSnapshot.js), pushed to the
+  // native store on the same trigger as the widget snapshot and served by the
+  // LauncherProvider (docs/launcher-integration.md). Android only: the
+  // launcher is an Android app. Pushed only when the content changed.
+  useEffect(() => {
+    if (!dataLoaded || !isNativeAndroid() || !window.DayGlanceNative?.updateLauncherSnapshot) return;
+    if (isResizing) return;
+    const now = new Date();
+    const snapshot = buildLauncherSnapshot({
+      now, todayStr: getTodayStr(),
+      tasks, unscheduledTasks, expandedRecurringTasks,
+      projects, goals, goalsProjectsEnabled, isVisibleForUser,
+      todayRoutines, routineCompletions, routinesEnabled,
+      frameInstancesForDate: getFrameInstancesForDate, getDayWindow,
+      weatherCoords: getStoredWeatherCoords(),
+      use24Hour: use24HourClock,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      updatedAt: Date.now(),
+      handledWrites: readLauncherLedger(),
+    });
+    const fingerprint = launcherSnapshotFingerprint(snapshot);
+    if (fingerprint === lastLauncherSnapshotRef.current) return;
+    lastLauncherSnapshotRef.current = fingerprint;
+    try {
+      window.DayGlanceNative.updateLauncherSnapshot(JSON.stringify(snapshot));
+    } catch (_) {}
+    // getFrameInstancesForDate and getDayWindow are stable per their inputs;
+    // the ledger changes only with a launcher write, which changes tasks too.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dataLoaded, isResizing, tasks, unscheduledTasks, expandedRecurringTasks,
+    projects, goals, goalsProjectsEnabled, isVisibleForUser,
+    todayRoutines, routineCompletions, routinesEnabled,
+    getFrameInstancesForDate, getDayWindow, use24HourClock, currentTime,
+  ]);
+
   // ── Native Android widget snapshot sync ──────────────────────────────────
   // Pushes a rich snapshot of today's agenda to the native widget via NativeBridge.
   // Runs whenever tasks, habits, routines, or frames change so the widget is always
@@ -8556,6 +8614,7 @@ const DayPlanner = () => {
     showGoalsDashboard, setShowGoalsDashboard,
     goalsDashboardFocusId, setGoalsDashboardFocusId,
     goalsDashboardFocusProjectId, setGoalsDashboardFocusProjectId,
+    goalsDashboardFocusTab, setGoalsDashboardFocusTab,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
     addGoal, updateGoal, deleteGoal,
     addArea, updateArea, deleteArea, reorderAreas,

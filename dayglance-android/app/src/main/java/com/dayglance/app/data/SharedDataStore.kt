@@ -3,6 +3,8 @@ package com.dayglance.app.data
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * Shared data store used by both the WebView and the home screen widget.
@@ -92,6 +94,41 @@ class SharedDataStore(context: Context) {
     var widgetSnapshotUpdatedAt: Long
         get() = prefs.getLong(KEY_WIDGET_SNAPSHOT_TS, 0L)
         set(value) = prefs.edit { putLong(KEY_WIDGET_SNAPSHOT_TS, value) }
+
+    // ── Launcher snapshot and writes (docs/launcher-integration.md) ──────────
+
+    /** The GLANCElauncher's read model, written by the app; LauncherProvider serves it. */
+    var launcherSnapshot: String?
+        get() = prefs.getString(KEY_LAUNCHER_SNAPSHOT, null)
+        set(value) = prefs.edit { putString(KEY_LAUNCHER_SNAPSHOT, value) }
+
+    var launcherSnapshotUpdatedAt: Long
+        get() = prefs.getLong(KEY_LAUNCHER_SNAPSHOT_TS, 0L)
+        set(value) = prefs.edit { putLong(KEY_LAUNCHER_SNAPSHOT_TS, value) }
+
+    /**
+     * The launcher's queued writes, a JSON array of {action, payload, clientId,
+     * receivedAt}. A QUEUE, unlike the automation transport's single slot: the
+     * launcher can fire two writes at a dead app and both must survive until the
+     * web layer drains them in order (NativeBridge.getPendingLauncherIntents).
+     * Each write carries its own id and the web layer dedupes on it, so the
+     * append is kept simple and the size is capped rather than policed.
+     */
+    fun appendPendingLauncherIntent(entryJson: String) {
+        val arr = try { JSONArray(prefs.getString(KEY_PENDING_LAUNCHER_INTENTS, "[]")) } catch (e: Exception) { JSONArray() }
+        arr.put(JSONObject(entryJson))
+        val bounded = if (arr.length() > MAX_PENDING_LAUNCHER_INTENTS) {
+            JSONArray().also { out -> for (i in arr.length() - MAX_PENDING_LAUNCHER_INTENTS until arr.length()) out.put(arr.get(i)) }
+        } else arr
+        prefs.edit { putString(KEY_PENDING_LAUNCHER_INTENTS, bounded.toString()) }
+    }
+
+    /** Takes every queued launcher write, oldest first, and clears the queue. */
+    fun drainPendingLauncherIntents(): String {
+        val json = prefs.getString(KEY_PENDING_LAUNCHER_INTENTS, null) ?: return "[]"
+        prefs.edit { remove(KEY_PENDING_LAUNCHER_INTENTS) }
+        return json
+    }
 
     // ── Notification pending actions ─────────────────────────────────────────
 
@@ -388,6 +425,10 @@ class SharedDataStore(context: Context) {
         private const val KEY_PENDING_SHARE = "pending_share_text"
         private const val KEY_PENDING_FOCUS_ACTION = "pending_focus_action"
         private const val KEY_PENDING_INTENT_JSON = "pending_intent_json"
+        private const val KEY_LAUNCHER_SNAPSHOT = "launcher_snapshot"
+        private const val KEY_LAUNCHER_SNAPSHOT_TS = "launcher_snapshot_ts"
+        private const val KEY_PENDING_LAUNCHER_INTENTS = "pending_launcher_intents"
+        private const val MAX_PENDING_LAUNCHER_INTENTS = 200
         private const val KEY_PENDING_DEEP_LINK = "pending_deep_link"
         private const val KEY_AUTOMATION_INTENTS_ENABLED = "automation_intents_enabled"
         private const val KEY_APP_DARK_MODE = "app_dark_mode"

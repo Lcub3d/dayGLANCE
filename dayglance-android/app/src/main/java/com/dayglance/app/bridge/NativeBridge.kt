@@ -662,6 +662,26 @@ class NativeBridge(
      *
      * Called by JS on every visibilitychange event (same cadence as getPendingAction).
      */
+    /**
+     * The GLANCElauncher's snapshot (utils/launcherSnapshot.js), stored for the
+     * LauncherProvider and announced to its observers. Pushed by App.jsx only
+     * when its content changed, on the widget snapshot's trigger.
+     */
+    @JavascriptInterface
+    fun updateLauncherSnapshot(snapshotJson: String) {
+        try {
+            dataStore.launcherSnapshot = snapshotJson
+            dataStore.launcherSnapshotUpdatedAt = System.currentTimeMillis()
+            context.contentResolver.notifyChange(com.dayglance.app.launcher.LauncherProvider.CONTENT_URI, null)
+        } catch (e: Exception) {
+            android.util.Log.w("LauncherSnapshot", "Failed to store the launcher snapshot", e)
+        }
+    }
+
+    /** The launcher's queued writes as a JSON array, oldest first; the queue is cleared. */
+    @JavascriptInterface
+    fun getPendingLauncherIntents(): String = dataStore.drainPendingLauncherIntents()
+
     @JavascriptInterface
     fun getPendingIntent(): String {
         val json = dataStore.pendingIntentJson ?: return ""

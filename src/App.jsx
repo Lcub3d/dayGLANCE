@@ -36,6 +36,8 @@ import { createICloudSnapshotTransport } from './sync/icloudSnapshotTransport.js
 import { directAccessTransport } from './sync/directAccessTransport.js';
 import useDirectAccessStatus from './hooks/useDirectAccessStatus.js';
 import { evaluateSnapshotPush } from './utils/widgetSnapshotDedupe.js';
+import { buildLauncherSnapshot, launcherSnapshotFingerprint } from './utils/launcherSnapshot.js';
+import { readLauncherLedger } from './intents/launcherWrites.js';
 import { buildWidgetSnapshot, readCachedSteps } from './utils/widgetSnapshot.js';
 import { loadAlarmPrefs } from './utils/dialPrefs.js';
 import { buildProjectedDay, projectionDates, guardSnapshotSize } from './utils/widgetDayProjection.js';
@@ -2610,6 +2612,8 @@ const DayPlanner = () => {
   // (MainActivity.storeDeepLink) — same quoted-string shape from the bridge.
   // Reassigned every render, so a caller always gets current handlers.
   const drainPendingDeepLinkRef = useRef(null);
+  // The last launcher snapshot's content fingerprint (utils/launcherSnapshot.js).
+  const lastLauncherSnapshotRef = useRef(null);
   // A widget's Done (the Up Next widget, iOS Control Center): complete, never
   // un-complete. The widget can be showing a task that another device or a
   // sync has already completed; toggling would reopen it. A task not found in
@@ -7400,6 +7404,43 @@ const DayPlanner = () => {
   }, [
     dataLoaded, widgetTodayKey, weekStartDay, widgetTasksForDate, unscheduledTasks, isVisibleForUser,
     routinesEnabled, routinesDate, todayRoutines, routineCompletions,
+  ]);
+
+  // ── GLANCElauncher snapshot ──────────────────────────────────────────────
+  // The launcher's read model (utils/launcherSnapshot.js), pushed to the
+  // native store on the same trigger as the widget snapshot and served by the
+  // LauncherProvider (docs/launcher-integration.md). Android only: the
+  // launcher is an Android app. Pushed only when the content changed.
+  useEffect(() => {
+    if (!dataLoaded || !isNativeAndroid() || !window.DayGlanceNative?.updateLauncherSnapshot) return;
+    if (isResizing) return;
+    const now = new Date();
+    const snapshot = buildLauncherSnapshot({
+      now, todayStr: getTodayStr(),
+      tasks, unscheduledTasks, expandedRecurringTasks,
+      projects, goals, goalsProjectsEnabled, isVisibleForUser,
+      todayRoutines, routineCompletions, routinesEnabled,
+      frameInstancesForDate: getFrameInstancesForDate, getDayWindow,
+      weatherCoords: getStoredWeatherCoords(),
+      use24Hour: use24HourClock,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      updatedAt: Date.now(),
+      handledWrites: readLauncherLedger(),
+    });
+    const fingerprint = launcherSnapshotFingerprint(snapshot);
+    if (fingerprint === lastLauncherSnapshotRef.current) return;
+    lastLauncherSnapshotRef.current = fingerprint;
+    try {
+      window.DayGlanceNative.updateLauncherSnapshot(JSON.stringify(snapshot));
+    } catch (_) {}
+    // getFrameInstancesForDate and getDayWindow are stable per their inputs;
+    // the ledger changes only with a launcher write, which changes tasks too.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dataLoaded, isResizing, tasks, unscheduledTasks, expandedRecurringTasks,
+    projects, goals, goalsProjectsEnabled, isVisibleForUser,
+    todayRoutines, routineCompletions, routinesEnabled,
+    getFrameInstancesForDate, getDayWindow, use24HourClock, currentTime,
   ]);
 
   // ── Native Android widget snapshot sync ──────────────────────────────────

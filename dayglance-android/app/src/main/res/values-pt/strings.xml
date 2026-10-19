@@ -202,4 +202,6 @@
     <string name="day_dial_legend_sleep">Sono</string>
     <string name="day_dial_unblocked">Tempo livre</string>
     <string name="day_dial_routines">Rotinas</string>
+    <string name="launcher_permission_label">Ler dados do dayGLANCE para o GLANCElauncher</string>
+    <string name="launcher_permission_description">Permite ao GLANCElauncher ler as tarefas, metas, projetos, rotinas e frames do dia e enviar-lhe tarefas para criar ou concluir.</string>
 </resources>

@@ -472,6 +472,22 @@ export const nativeGetPendingIntent = () => {
  * @param action     The action string that was processed (e.g. "app.dayglance.CREATE")
  * @param resultJson The handleIntent result object serialised as a JSON string
  */
+/**
+ * The GLANCElauncher's queued writes ({action, payload, clientId} each), drained
+ * and cleared in one call (intents/launcherWrites.js). Empty off Android.
+ */
+export const nativeGetPendingLauncherIntents = () => {
+  const bridge = nativeBridge();
+  if (!bridge?.getPendingLauncherIntents) return [];
+  try {
+    const raw = bridge.getPendingLauncherIntents();
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
 export const nativeReportIntentResult = (action, resultJson) => {
   const bridge = nativeBridge();
   if (!bridge?.reportIntentResult) return;

@@ -646,6 +646,16 @@ export const mergeSyncData = (local, remote, retentionDays) => {
           if (r?.originalPlan === undefined) result.remoteChanged = true;
         }
       }
+      // `clientId` (intents/launcherWrites.js), the launcher's id for the write
+      // that created the task, is write-once in the same way.
+      if (item.clientId === undefined) {
+        const cid = l?.clientId ?? r?.clientId;
+        if (cid !== undefined) {
+          item.clientId = cid;
+          if (l?.clientId === undefined) result.localChanged = true;
+          if (r?.clientId === undefined) result.remoteChanged = true;
+        }
+      }
       // `starredDate` likewise. An unstar writes an explicit null, so only an
       // absent value means the side never carried the field; a null from either
       // side is a real unstar and is left to win on its own timestamp.

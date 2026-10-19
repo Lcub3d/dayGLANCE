@@ -57,6 +57,11 @@
 // re-stamp every newly scheduled task and those fabricated timestamps would beat
 // real completions made elsewhere — the exact resurrection described above.
 //
+// `clientId` (intents/launcherWrites.js) is the GLANCElauncher's id for the
+// write that created the task. The app stamps it right after the create, which
+// has already stamped on its own; a copy gaining it later is sync carrying it,
+// never a user's edit. Stripped like `originalPlan`.
+//
 // `obsidianNoteLinkSeen` / `obsidianNoteLinkSeenAt` are the Obsidian merge's
 // record of when it last saw a task line carry the link to its note
 // (utils/mergeObsidianTasks.js). The merge bumps the stamp whenever the note's
@@ -80,7 +85,7 @@ function normalizeField(task) {
   // set by the move that already stamps, and cleared when the line is next
   // observed untimed. Clearing it is not an edit anyone should out-rank.
   const { lastModified: _omit, obsidianClearedTime: _marker, originalPlan: _baseline, deferrals: _slips, planTrail: _stops,
-    obsidianNoteLinkSeen: _linkSeen, obsidianNoteLinkSeenAt: _linkSeenAt, ...rest } = task;
+    obsidianNoteLinkSeen: _linkSeen, obsidianNoteLinkSeenAt: _linkSeenAt, clientId: _launcherWrite, ...rest } = task;
   return { ...rest, notes: rest.notes ?? '', subtasks: rest.subtasks ?? [], archived: rest.archived ?? false, priority: rest.priority ?? 0, starredDate: rest.starredDate ?? null, deadline: rest.deadline ?? null };
 }
 

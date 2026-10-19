@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { ACTIONS } from '@glance-apps/intents';
-import { isNativeAndroid, nativeGetPendingIntent, nativeReportIntentResult } from '../native';
+import { isNativeAndroid, nativeGetPendingIntent, nativeGetPendingLauncherIntents, nativeReportIntentResult } from '../native';
 import { handleIntent } from './handleIntent.js';
+import { handleLauncherIntent } from './launcherWrites.js';
 
 /**
  * The native transport delivers the fully-qualified Android action string
@@ -40,6 +41,18 @@ export function useAndroidIntentBridge(context) {
     if (!isNativeAndroid()) return;
 
     const checkPending = async () => {
+      // The launcher's queue first (docs/launcher-integration.md): its own
+      // slot, several deep, handled in order; no RESULT broadcast, the
+      // launcher reads the outcome from the next snapshot.
+      for (const launcherIntent of nativeGetPendingLauncherIntents()) {
+        try {
+          const result = await handleLauncherIntent(launcherIntent, contextRef.current);
+          if (import.meta.env.DEV) console.log('[launcher-bridge]', launcherIntent.action, result);
+        } catch (err) {
+          if (import.meta.env.DEV) console.warn('[launcher-bridge]', err);
+        }
+      }
+
       const intent = nativeGetPendingIntent();
       if (!intent) return;
 

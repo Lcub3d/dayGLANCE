@@ -204,5 +204,6 @@
     <string name="day_dial_unblocked">可用时间</string>
     <string name="day_dial_routines">日常</string>
     <string name="launcher_permission_label">为 GLANCElauncher 读取 dayGLANCE 数据</string>
+    <string name="launcher_refresh_notification">正在为 GLANCElauncher 刷新</string>
     <string name="launcher_permission_description">允许 GLANCElauncher 读取当天的任务、目标、项目、例行事项和时间框，并向其发送要创建或完成的任务。</string>
 </resources>

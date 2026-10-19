@@ -17,7 +17,7 @@ import { mergeSyncData } from './mergeSync.js';
 //
 // This test mechanizes the audit that found it, permanently:
 //   1. The payload key list is parsed from buildSyncPayload's SOURCE
-//     (src/App.jsx), so the canary cannot drift from what the app actually
+//     (src/hooks/useSyncEngineData.js), so the canary cannot drift from what the app actually
 //     uploads — a new payload key fails test 1 until it is added to the
 //     fixture below, and then fails tests 2/3 until it actually survives the
 //     merge (upstream, wrapper, or a documented device-local exemption).
@@ -27,7 +27,7 @@ import { mergeSyncData } from './mergeSync.js';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const APP_SRC = readFileSync(
-  path.join(path.dirname(fileURLToPath(import.meta.url)), 'App.jsx'), 'utf8');
+  path.join(path.dirname(fileURLToPath(import.meta.url)), 'hooks', 'useSyncEngineData.js'), 'utf8');
 
 function payloadKeysFromSource() {
   const start = APP_SRC.indexOf('const buildSyncPayload');

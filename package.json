@@ -93,6 +93,7 @@
     "globals": "^17.7.0",
     "jimp": "^1.6.1",
     "postcss": "^8.4.27",
+    "react-test-renderer": "^18.3.1",
     "tailwindcss": "^3.3.3",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^6.0.3",

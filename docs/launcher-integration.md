@@ -41,8 +41,68 @@ version, updatedAt, timezone, today, handledWrites). Each cursor has `_id`,
 the authority, so a `ContentObserver` registered on any collection URI sees
 every change. `insert`, `update` and `delete` throw.
 
-The snapshot is as fresh as the app's last JavaScript run. `meta.updatedAt` is
-the stamp the launcher shows staleness from.
+## Freshness: the heartbeat and REFRESH
+
+The snapshot is pushed only when its content changes, so `meta.updatedAt` says
+when something last moved, not when the app last looked. Two more stamps say
+that (`utils/launcherHeartbeat.js`), written natively beside the snapshot and
+merged into `meta` by the provider:
+
+- `checkedAt` (ms): every run of the snapshot builder, changed or not, and
+  every return to the foreground.
+- `syncedAt` (ISO): the latest completed cycle across the enabled sync tiers
+  (the file tier's and the vault's `getLastSynced`), the moment other devices'
+  changes are known to be in. Null when no tier is configured.
+
+`meta` also carries `rendererAlive` (whether a MainActivity with a live WebView
+exists in the process at the moment of the read) and `refreshLog`, the last 20
+REFRESH requests.
+
+**`com.dayglance.app.launcher.REFRESH`** asks the app to confirm its data now.
+It is not a write: it carries a `clientId` for dedupe and logging only, is never
+in the handled ledger, and the launcher sends it outside its outbox. The
+receiver routes it by liveness and logs every request with the liveness it saw:
+
+| Outcome | When |
+| --- | --- |
+| `queued` | the renderer is alive: queued and woken; the web layer runs every enabled tier to completion (one after the other), re-pushes, re-stamps the heartbeat, then reports `ran` (with `durationMs`) or `failed` (with `reason`) into the same entry |
+| `coalesced` | a queued or scheduled refresh from the last minute has no outcome yet |
+| `scheduled` | no renderer in the process: a headless run is enqueued (below); the entry gains `startedAt`, `waitMs` and `headless: true` when it runs, then `ran`/`failed` from the web layer or `aborted`/`throttled`/`failed` from the worker |
+| `deferred` | no renderer, and the headless run could not be enqueued (`reason` says why) |
+
+**The headless run** (`launcher/LauncherRefreshWorker.kt`; `src/headless/` on
+the web side; the rules in CLAUDE.md, "Headless refresh"). An expedited,
+network-constrained WorkManager job boots the web bundle in a WebView with
+no Activity, at `index.html?headless=refresh&clientId=…`, where the headless
+root runs one cycle of every configured tier with the app's own payload and
+apply, pushes the snapshot (keeping the last snapshot's weather, which it
+does not fetch) and the heartbeat, and reports. Then:
+
+- `ran` / `failed` come from the web layer as on the alive path, with
+  `liveness: dead` and `headless: true` on the entry;
+- `waitMs` is how long the OS held the job between the request and the run:
+  a standby bucket or Doze shows up here, not as a lost request;
+- `throttled`: two headless runs are never closer than ten minutes (a WebView
+  boot costs seconds and tens of MB); the entry says how long ago the last
+  one finished;
+- `aborted`: the user opened the app during the run. The reverse lock is
+  signal-abort: `MainActivity.onCreate` destroys the headless WebView on the
+  main thread before the live one loads, and the root checks
+  `headlessShouldAbort` at each phase boundary. The live instance's own start
+  runs a cycle, so nothing is lost; waiting would only hold the splash.
+- `failed` with `timed out after 60 s`: the cap; the WebView is torn down;
+- a run that finds the renderer alive by the time it executes hands the
+  REFRESH to it instead (the entry turns `queued`).
+
+`meta.headlessRunning` says whether a headless WebView exists at the moment
+of the read. The sync keys come from the same Keystore slots the app uses, so
+an encrypted tier with no cached key reports `failed` with `passphrase
+required` rather than prompting.
+
+The launcher measures staleness per app from `syncedAt` when sync is
+configured and from `checkedAt` otherwise, and its diagnostics panel shows
+the log, so standby-bucket deferral and dead-process gaps are visible over
+time.
 
 ## Writes: the launcher receiver
 
@@ -127,9 +187,18 @@ With the launcher's real digests in `launcher_certs.xml` and both apps installed
    `'{"routine_id":"<an id from routines>"}'` flips today's pill. A MOVE of a
    `recurring-…` id is refused, and `meta.handledWrites` lists that id with its
    `error`.
-4. Permission: from any app without the permission the query is refused
+4. A refresh: `am broadcast -a com.dayglance.app.launcher.REFRESH -n
+   com.dayglance.app/.launcher.LauncherIntentReceiver --es clientId rf-1`.
+   With the app alive, `meta.refreshLog` shows the entry go `queued` then
+   `ran`, and `syncedAt` moves if a tier is configured; with the process
+   killed (`adb shell am kill com.dayglance.app`, never `force-stop`), the
+   entry is `scheduled` with `rendererAlive` false, then gains `startedAt`
+   and `waitMs` and ends `ran` (`adb logcat -s LauncherRefresh:I` follows
+   the run); a second REFRESH inside ten minutes ends `throttled`. Open the
+   app during a run (`am start`) and the entry ends `aborted`.
+5. Permission: from any app without the permission the query is refused
    with a `SecurityException` and the broadcast is not delivered.
 
 Unit tests: `vitest run src/utils/launcherSnapshot.test.js
-src/intents/launcherWrites.test.js` and, on the Android side,
-`./gradlew :app:testDebugUnitTest --tests '*LauncherSnapshotRowsTest*'`.
+src/intents/launcherWrites.test.js src/headless` and, on the Android side,
+`./gradlew :app:testDebugUnitTest --tests 'com.dayglance.app.launcher.*'`.

@@ -192,4 +192,44 @@ describe('recordHandled', () => {
       expect(toggled).toHaveLength(2);
     });
   });
+
+  describe('REFRESH', () => {
+    const write = (clientId) => ({ action: 'com.dayglance.app.launcher.REFRESH', payload: {}, clientId });
+
+    it('runs the sync cycle, re-stamps the heartbeat, records the outcome, and never touches the ledger', async () => {
+      const { ctx } = makeContext();
+      const calls = [];
+      ctx.runSyncCycle = async () => { calls.push('sync'); };
+      ctx.touchLauncherHeartbeat = () => { calls.push('heartbeat'); };
+      const recorded = [];
+      ctx.recordLauncherRefresh = (e) => recorded.push(e);
+      const r = await handleLauncherIntent(write('rf-1'), ctx, io());
+      expect(r).toMatchObject({ success: true });
+      expect(calls).toEqual(['sync', 'heartbeat']);
+      expect(recorded).toEqual([expect.objectContaining({ clientId: 'rf-1', outcome: 'ran' })]);
+      expect(typeof recorded[0].durationMs).toBe('number');
+      expect(ledger).toEqual([]);
+      // Re-delivered in the same session: acknowledged, not run again.
+      expect(await handleLauncherIntent(write('rf-1'), ctx, io())).toMatchObject({ success: true, deduped: true });
+      expect(calls).toEqual(['sync', 'heartbeat']);
+    });
+
+    it('records a failure with its reason, and still re-stamps the heartbeat', async () => {
+      const { ctx } = makeContext();
+      ctx.runSyncCycle = async () => { throw new Error('vault 503'); };
+      let touched = 0;
+      ctx.touchLauncherHeartbeat = () => { touched++; };
+      const recorded = [];
+      ctx.recordLauncherRefresh = (e) => recorded.push(e);
+      expect(await handleLauncherIntent(write('rf-2'), ctx, io())).toMatchObject({ success: false, error: 'vault 503' });
+      expect(recorded[0]).toMatchObject({ clientId: 'rf-2', outcome: 'failed', reason: 'vault 503' });
+      expect(touched).toBe(1);
+      // No sync available at all: failed, said so.
+      const bare = makeContext().ctx;
+      const rec2 = [];
+      bare.recordLauncherRefresh = (e) => rec2.push(e);
+      expect(await handleLauncherIntent(write('rf-3'), bare, io())).toMatchObject({ success: false });
+      expect(rec2[0]).toMatchObject({ outcome: 'failed', reason: 'no sync cycle available' });
+    });
+  });
 });

@@ -167,9 +167,52 @@ cycle, because nothing tested the path between the modules. Write at least one s
 walks save → state → push → apply, and mutation-check each guard by removing it
 and confirming a test fails.
 
+# Headless refresh
+
+`src/headless/` is the root the Android shell mounts, in a WebView with no
+Activity, to answer the launcher's REFRESH while the app's process is dead
+(`docs/launcher-integration.md`, "Freshness"; the shell side is
+`dayglance-android/.../launcher/LauncherRefreshWorker.kt`). The rules:
+
+- **Headless mode is an ALLOWLIST, not a skip list.** `HeadlessRefresh.jsx`
+  composes only the data layer (the store, `useDataPersistence`,
+  `useSaveOnChange`, the day windows, the JOBO ledger), both sync tiers with
+  the app's own payload and apply (`hooks/useSyncEngineData.js`), and the
+  launcher snapshot and heartbeat push. Nothing else initialises: no
+  calendar fetch, Obsidian, reminders, weather, widgets, intents or UI. It is
+  never `<App headless />`: a feature that must not run headlessly is one the
+  root does not import, not one that checks a flag. The native
+  `HeadlessBridge` is the same allowlist (`HEADLESS_BRIDGE_METHODS` in
+  `headlessMode.js`); keep the two lists equal.
+- **The headless root loads every synced slice the way the app does.** The
+  payload sends each slice with a fresh `lastModified`, so a slice read with a
+  different default here would be pushed to every device as an edit. Slices
+  `loadData` does not set are read through `utils/storedSlices.js` and the
+  hooks' exported loaders (`loadRoutineState`), which the app's initialisers
+  use too. A new synced slice gets a reader there and an entry in the
+  headless store, and `missingSyncEngineDeps` names a dep the store forgot.
+- **The reverse lock is signal-abort.** If the user opens the app during a
+  headless run, `MainActivity.onCreate` destroys the headless WebView first,
+  on the main thread, before the live one loads; the root also asks
+  `headlessShouldAbort` at each phase boundary and reports `aborted`. Not
+  wait-with-cap: the live instance runs its own cycle at start, so the
+  headless result is redundant the moment the app opens, and a run has no
+  local edits to lose.
+- **The tiers run one after the other, never side by side.** Each apply
+  replaces the task lists whole; two applies in flight would each build from
+  state the other was about to change. The alive REFRESH path does the same.
+- **Every run is logged.** `scheduled` at the receiver; `startedAt` and
+  `waitMs` (how long the OS held the job) when the worker runs; then `ran`,
+  `failed` with a reason, `aborted` or `throttled` (ten-minute floor). The
+  launcher's diagnostics panel reads the log.
+
+`src/headless/HeadlessRefresh.scenarios.test.jsx` walks storage → payload →
+apply → storage and state → snapshot push under a fake bridge that records
+every method looked up; extend it when the allowlist or the slices change.
+
 # App.jsx — Ongoing Decomposition
 
-`App.jsx` started at ~30,000 lines and came down to ~9,600 across four refactor passes, then crept back to ~10,700 (October 2026); it is ~10,100 after the extractions below. Extracted so far:
+`App.jsx` started at ~30,000 lines and came down to ~9,600 across four refactor passes, then crept back to ~10,700 (October 2026); it is ~9,600 after the extractions below. Extracted so far:
 
 - **ICS/CalDAV parser** → `src/utils/icsParser.js` (with tests)
 - **Voice input pipeline** → `src/hooks/useVoiceInput.js`
@@ -185,6 +228,7 @@ and confirming a test fails.
 - **Focus orchestration** → `src/hooks/useFocusOrchestration.js` (#2015): entering, starting, advancing, skipping and exiting a session, and settling each work phase into JOBO Do (`src/jobo/focusSession.js`, with tests)
 - **Cloud sync after an edit** → `src/hooks/useCloudSyncAfterEdit.js` (with tests): the 5-second debounce runs a full cycle, never a bare upload (#2065)
 - **Undo toast** → `src/components/UndoToast.jsx` (with tests); its state, timing (`toastDelay`) and wording stay in `src/hooks/useUndo.js` and `src/utils/undoLabels.js`
+- **Sync payload and apply** → `src/hooks/useSyncEngineData.js` (`buildSyncPayload`, `applyEngineData`, moved verbatim behind a deps object so the headless root can supply its own state; `src/headless/HeadlessRefresh.scenarios.test.jsx` walks payload → apply → state); the slice initialisers it depends on → `src/utils/storedSlices.js` and `src/utils/userScope.js`
 
 ## Next candidates
 
@@ -195,10 +239,11 @@ wiring, and moving them only relocates them. Sizes are approximate.
 - **Calendar writeback and sync** (`syncTaskCompletionToCalDAV`,
   `syncWithCalendar`, `syncTaskCalendar`, ~500 lines): into the existing
   `useCalendarSync`.
-- **Sync apply and payload** (`applyEngineData`, `buildSyncPayload`, ~600
-  lines): the highest risk and the biggest payoff, so last and slowest. Write
-  scenario tests that walk payload → apply → state before moving anything,
-  and follow "Adding a field to a task" above.
+- **Sync engines and their wiring** (the file-tier engine creation, the
+  vault engine effect, the key-readiness gates, ~250 lines): the payload and
+  apply are out (`useSyncEngineData`); the engine construction is still in
+  App.jsx and the headless root builds its own copies. One hook taking the
+  payload/apply closures would serve both roots.
 
 ## Guidance
 

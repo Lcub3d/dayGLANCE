@@ -203,5 +203,6 @@
     <string name="day_dial_unblocked">Tempo libero</string>
     <string name="day_dial_routines">Routine</string>
     <string name="launcher_permission_label">Leggere i dati di dayGLANCE per GLANCElauncher</string>
+    <string name="launcher_refresh_notification">Aggiornamento per GLANCElauncher</string>
     <string name="launcher_permission_description">Consente a GLANCElauncher di leggere attività, obiettivi, progetti, routine e frame del giorno e di inviargli attività da creare o completare.</string>
 </resources>

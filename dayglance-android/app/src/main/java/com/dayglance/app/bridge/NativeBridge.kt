@@ -668,19 +668,26 @@ class NativeBridge(
      * when its content changed, on the widget snapshot's trigger.
      */
     @JavascriptInterface
-    fun updateLauncherSnapshot(snapshotJson: String) {
-        try {
-            dataStore.launcherSnapshot = snapshotJson
-            dataStore.launcherSnapshotUpdatedAt = System.currentTimeMillis()
-            context.contentResolver.notifyChange(com.dayglance.app.launcher.LauncherProvider.CONTENT_URI, null)
-        } catch (e: Exception) {
-            android.util.Log.w("LauncherSnapshot", "Failed to store the launcher snapshot", e)
-        }
-    }
+    fun updateLauncherSnapshot(snapshotJson: String) =
+        com.dayglance.app.launcher.LauncherWrites.updateSnapshot(context, dataStore, snapshotJson)
 
     /** The launcher's queued writes as a JSON array, oldest first; the queue is cleared. */
     @JavascriptInterface
     fun getPendingLauncherIntents(): String = dataStore.drainPendingLauncherIntents()
+
+    /**
+     * The launcher heartbeat ({checkedAt, syncedAt}), written on every run of the
+     * snapshot builder and on each foreground, changed or not, and announced so
+     * the launcher measures staleness from the last confirmation.
+     */
+    @JavascriptInterface
+    fun touchLauncherHeartbeat(json: String) =
+        com.dayglance.app.launcher.LauncherWrites.touchHeartbeat(context, dataStore, json)
+
+    /** The outcome of a launcher REFRESH ({clientId, outcome, reason?, durationMs}), merged into its log entry. */
+    @JavascriptInterface
+    fun recordLauncherRefresh(json: String) =
+        com.dayglance.app.launcher.LauncherWrites.recordRefresh(context, dataStore, json)
 
     @JavascriptInterface
     fun getPendingIntent(): String {

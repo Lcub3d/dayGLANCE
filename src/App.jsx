@@ -1823,6 +1823,9 @@ const DayPlanner = () => {
     tasks, unscheduledTasks, recurringTasks, projects,
     setTasks, setUnscheduledTasks, setRecurringTasks,
     goals, addGoal, updateGoal, deleteGoal,
+    // The launcher's MOVE, RESIZE and TOGGLE_ROUTINE (intents/launcherWrites.js)
+    // read today's routines for their guards and toggle a completion.
+    todayRoutines, routinesDate, routineCompletions, routinesEnabled, toggleRoutineCompletion,
     navigate: tab => {
       const mobileTab = tab === 'glance' ? 'dayglance' : tab;
       setMobileActiveTab(mobileTab);

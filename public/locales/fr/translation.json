@@ -1371,7 +1371,8 @@
     "loadFailedBody": "dayGLANCE ne les écrasera pas, donc les modifications de ces données ne sont pas enregistrées. Téléchargez une copie, restaurez une sauvegarde ou supprimez-les.",
     "loadFailedDownload": "Télécharger une copie",
     "loadFailedDiscard": "Supprimer",
-    "loadFailedDiscardConfirm": "Supprimer les données illisibles ? Vos données actuelles seront enregistrées par-dessus, et c'est irréversible. Téléchargez d'abord une copie si vous pourriez en avoir besoin."
+    "loadFailedDiscardConfirm": "Supprimer les données illisibles ? Vos données actuelles seront enregistrées par-dessus, et c'est irréversible. Téléchargez d'abord une copie si vous pourriez en avoir besoin.",
+    "seeWhatIsUsingSpace": "Voir ce qui occupe l'espace"
   },
   "weeklyReview": {
     "tasksDone": "Tâches terminées",

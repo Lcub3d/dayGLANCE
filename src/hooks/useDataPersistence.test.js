@@ -564,3 +564,39 @@ describe('loadData isolates an unreadable bucket (#2138)', () => {
     expect(failures.getLoadFailures()).toEqual([]);
   });
 });
+
+// ── #2139: a full store is recorded, not just toasted once ──────────────────
+describe('saveData at quota', () => {
+  afterEach(() => { delete globalThis.localStorage; delete globalThis.window; vi.restoreAllMocks(); });
+
+  it('records the rejected key for the persistent banner and still writes the rest', async () => {
+    const written = {};
+    globalThis.localStorage = {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn((k, v) => {
+        if (k === 'day-planner-habit-logs') throw Object.assign(new Error('quota'), { name: 'QuotaExceededError' });
+        written[k] = v;
+      }),
+      removeItem: vi.fn(),
+    };
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const persistence = await loadHookAs('main');
+    const { getWriteFailures } = await import('../utils/storageWrites.js');
+    const { props } = makeProps();
+    const save = persistence({
+      ...props,
+      tasks: [], unscheduledTasks: [], recycleBin: [], recurringTasks: [], todayRoutines: [],
+      darkMode: false, syncUrl: '', taskCalendarUrl: '', syncRetentionDays: 0,
+      completedTaskUids: new Set(), routineDefinitions: {}, routinesDate: '',
+      removedTodayRoutineIds: {}, habits: [], habitLogs: {}, habitsEnabled: false,
+      routinesEnabled: false, gtdFrames: [], goals: [], projects: [], areas: [],
+      goalsProjectsEnabled: false, unscheduledOrderTimestamp: null,
+      t: (k) => k,
+    }).saveData;
+
+    expect(save).not.toThrow();
+    expect(getWriteFailures()).toEqual(['day-planner-habit-logs']);
+    expect(props.setUndoToast).toHaveBeenCalledTimes(1);
+    expect(written).toHaveProperty('day-planner-goals');
+  });
+});

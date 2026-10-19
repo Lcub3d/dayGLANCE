@@ -1404,7 +1404,8 @@
     "loadFailedBody": "dayGLANCE ich nie nadpisze, więc zmiany w tych danych nie są zapisywane. Pobierz kopię, przywróć kopię zapasową lub je odrzuć.",
     "loadFailedDownload": "Pobierz kopię",
     "loadFailedDiscard": "Odrzuć",
-    "loadFailedDiscardConfirm": "Odrzucić nieczytelne dane? Twoje bieżące dane zostaną zapisane w ich miejsce i nie da się tego cofnąć. Najpierw pobierz kopię, jeśli może się przydać."
+    "loadFailedDiscardConfirm": "Odrzucić nieczytelne dane? Twoje bieżące dane zostaną zapisane w ich miejsce i nie da się tego cofnąć. Najpierw pobierz kopię, jeśli może się przydać.",
+    "seeWhatIsUsingSpace": "Zobacz, co zajmuje miejsce"
   },
   "weeklyReview": {
     "tasksDone": "Wykonane zadania",

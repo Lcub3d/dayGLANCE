@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ICS_CALENDARS_KEY, loadIcsCalendars, PRIMARY_CAL_META_KEY, loadPrimaryCalendarMeta } from '../utils/icsFeedSync.js';
+import { writeItem } from '../utils/storageWrites.js';
 
 const useCalendarSync = () => {
   const [calSyncStatus, setCalSyncStatus] = useState(null); // null | 'success' | 'error'
@@ -29,17 +30,17 @@ const useCalendarSync = () => {
 
   // Persist task calendar auth to localStorage
   useEffect(() => {
-    localStorage.setItem('day-planner-task-calendar-auth', JSON.stringify(taskCalendarAuth));
+    writeItem('day-planner-task-calendar-auth', JSON.stringify(taskCalendarAuth));
   }, [taskCalendarAuth]);
 
   // Persist additional calendars to localStorage
   useEffect(() => {
-    localStorage.setItem(ICS_CALENDARS_KEY, JSON.stringify(icsCalendars));
+    writeItem(ICS_CALENDARS_KEY, JSON.stringify(icsCalendars));
   }, [icsCalendars]);
 
   // Persist primary calendar meta to localStorage
   useEffect(() => {
-    localStorage.setItem(PRIMARY_CAL_META_KEY, JSON.stringify(primaryCalendarMeta));
+    writeItem(PRIMARY_CAL_META_KEY, JSON.stringify(primaryCalendarMeta));
   }, [primaryCalendarMeta]);
 
   return {

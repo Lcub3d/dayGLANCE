@@ -600,3 +600,91 @@ describe('saveData at quota', () => {
     expect(written).toHaveProperty('day-planner-goals');
   });
 });
+
+// ── #2140: one edit writes the buckets it changed, not all of them ──────────
+describe('saveData writes only the buckets that changed', () => {
+  let store;
+  let setItem;
+  const base = () => ({
+    ...makeProps().props,
+    tasks: [{ id: 't1', title: 'Task', date: '2026-10-19', lastModified: '2026-10-18T00:00:00.000Z' }],
+    unscheduledTasks: [], recycleBin: [], recurringTasks: [], todayRoutines: [],
+    darkMode: false, syncUrl: '', taskCalendarUrl: '', syncRetentionDays: 0,
+    completedTaskUids: new Set(), routineDefinitions: {}, routinesDate: '2026-10-19',
+    removedTodayRoutineIds: {}, habits: [], habitLogs: {}, habitsEnabled: false,
+    routinesEnabled: false, gtdFrames: [], goals: [], projects: [], areas: [],
+    goalsProjectsEnabled: false, unscheduledOrderTimestamp: null,
+    t: (k) => k,
+  });
+  const BOOKKEEPING = ['day-planner-cloud-sync-local-modified', 'day-planner-local-edit-at'];
+  const dataWrites = () => setItem.mock.calls.map(([k]) => k).filter(k => !BOOKKEEPING.includes(k));
+
+  beforeEach(() => {
+    store = {};
+    setItem = vi.fn((k, v) => { store[k] = v; });
+    globalThis.localStorage = { getItem: vi.fn((k) => store[k] ?? null), setItem, removeItem: vi.fn() };
+  });
+  afterEach(() => { delete globalThis.localStorage; delete globalThis.window; vi.restoreAllMocks(); });
+
+  it('a pass with nothing changed writes no data bucket', async () => {
+    const persistence = await loadHookAs('main');
+    const props = base();
+    persistence(props).saveData();
+    expect(dataWrites().length).toBeGreaterThan(20);
+
+    setItem.mockClear();
+    persistence(props).saveData();
+    expect(dataWrites()).toEqual([]);
+  });
+
+  it('changing one slice writes that bucket alone', async () => {
+    const persistence = await loadHookAs('main');
+    const props = base();
+    persistence(props).saveData();
+
+    setItem.mockClear();
+    persistence({ ...props, habits: [{ id: 'h1', name: 'Water' }] }).saveData();
+    expect(dataWrites()).toEqual(['day-planner-habits']);
+  });
+
+  it('a completed task rewrites tasks, stamped, and nothing else', async () => {
+    const persistence = await loadHookAs('main');
+    const props = base();
+    persistence(props).saveData();
+
+    setItem.mockClear();
+    persistence({ ...props, tasks: [{ ...props.tasks[0], completed: true }] }).saveData();
+    expect(dataWrites()).toEqual(['day-planner-tasks']);
+    expect(JSON.parse(store['day-planner-tasks'])[0].lastModified).not.toBe('2026-10-18T00:00:00.000Z');
+  });
+
+  it('a key changed behind the pass is rewritten from state, as before', async () => {
+    const persistence = await loadHookAs('main');
+    const props = base();
+    persistence(props).saveData();
+
+    store['day-planner-goals'] = JSON.stringify([{ id: 'stray' }]);
+    setItem.mockClear();
+    persistence(props).saveData();
+    expect(dataWrites()).toEqual(['day-planner-goals']);
+    expect(store['day-planner-goals']).toBe('[]');
+  });
+
+  it('a write that failed is tried again on the next pass', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const persistence = await loadHookAs('main');
+    const props = base();
+    let full = true;
+    setItem.mockImplementation((k, v) => {
+      if (full && k === 'day-planner-habit-logs') throw Object.assign(new Error('quota'), { name: 'QuotaExceededError' });
+      store[k] = v;
+    });
+    persistence(props).saveData();
+    expect(store).not.toHaveProperty('day-planner-habit-logs');
+
+    full = false;
+    setItem.mockClear();
+    persistence(props).saveData();
+    expect(dataWrites()).toEqual(['day-planner-habit-logs']);
+  });
+});

@@ -221,5 +221,6 @@
     <string name="day_dial_unblocked">Вільно</string>
     <string name="day_dial_routines">Рутини</string>
     <string name="launcher_permission_label">Читання даних dayGLANCE для GLANCElauncher</string>
+    <string name="launcher_refresh_notification">Оновлення для GLANCElauncher</string>
     <string name="launcher_permission_description">Дозволяє GLANCElauncher читати завдання, цілі, проєкти, рутини та фрейми дня і надсилати йому завдання для створення чи завершення.</string>
 </resources>

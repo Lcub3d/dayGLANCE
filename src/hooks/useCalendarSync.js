@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ICS_CALENDARS_KEY, loadIcsCalendars, PRIMARY_CAL_META_KEY, loadPrimaryCalendarMeta } from '../utils/icsFeedSync.js';
 import { writeItem } from '../utils/storageWrites.js';
+import { readTaskCalendarAuth, readSyncRetentionDays } from '../utils/storedSlices.js';
 
 const useCalendarSync = () => {
   const [calSyncStatus, setCalSyncStatus] = useState(null); // null | 'success' | 'error'
@@ -8,14 +9,8 @@ const useCalendarSync = () => {
     localStorage.getItem('day-planner-cal-sync-last-synced') || null
   );
   const [taskCalendarUrl, setTaskCalendarUrl] = useState('');
-  const [taskCalendarAuth, setTaskCalendarAuth] = useState(() => {
-    const saved = localStorage.getItem('day-planner-task-calendar-auth');
-    return saved ? JSON.parse(saved) : { username: '', appPassword: '', caldavBaseUrl: '' };
-  });
-  const [syncRetentionDays, setSyncRetentionDays] = useState(() => {
-    const saved = localStorage.getItem('day-planner-sync-retention-days');
-    return saved ? JSON.parse(saved) : 30;
-  });
+  const [taskCalendarAuth, setTaskCalendarAuth] = useState(readTaskCalendarAuth);
+  const [syncRetentionDays, setSyncRetentionDays] = useState(readSyncRetentionDays);
   // Additional ICS/CalDAV event calendars beyond the primary Calendar URL:
   // [{id, name, url, username, password, color, enabled}]. The primary feed
   // stays in the legacy day-planner-sync-url key for old-build compatibility.

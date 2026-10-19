@@ -157,6 +157,14 @@ class SharedDataStore(context: Context) {
         writeLauncherRefreshLog(entries.takeLast(MAX_LAUNCHER_REFRESH_LOG))
     }
 
+    /** The entry with this client id, newest first, or null. */
+    fun launcherRefreshEntry(clientId: String): JSONObject? = launcherRefreshEntries().lastOrNull { it.optString("clientId") == clientId }
+
+    /** When the last headless refresh started (ms); LauncherRefreshWorker's ten-minute floor. */
+    var launcherHeadlessLastRunAt: Long
+        get() = prefs.getLong(KEY_LAUNCHER_HEADLESS_LAST_RUN, 0L)
+        set(value) = prefs.edit { putLong(KEY_LAUNCHER_HEADLESS_LAST_RUN, value) }
+
     /** Merges [patch] into the entry with this client id (the web layer reporting an outcome). */
     fun updateLauncherRefresh(clientId: String, patch: JSONObject) {
         val entries = launcherRefreshEntries()
@@ -479,6 +487,7 @@ class SharedDataStore(context: Context) {
         private const val KEY_PENDING_LAUNCHER_INTENTS = "pending_launcher_intents"
         private const val KEY_LAUNCHER_HEARTBEAT = "launcher_heartbeat"
         private const val KEY_LAUNCHER_REFRESH_LOG = "launcher_refresh_log"
+        private const val KEY_LAUNCHER_HEADLESS_LAST_RUN = "launcher_headless_last_run"
         private const val MAX_LAUNCHER_REFRESH_LOG = 20
         private const val MAX_PENDING_LAUNCHER_INTENTS = 200
         private const val KEY_PENDING_DEEP_LINK = "pending_deep_link"

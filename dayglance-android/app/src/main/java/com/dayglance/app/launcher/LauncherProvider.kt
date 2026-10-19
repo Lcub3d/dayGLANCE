@@ -41,6 +41,7 @@ class LauncherProvider : ContentProvider() {
             heartbeatJson = store.launcherHeartbeat,
             refreshLogJson = store.launcherRefreshLog,
             rendererAlive = com.dayglance.app.MainActivity.rendererAlive,
+            headlessRunning = LauncherRefreshWorker.running,
         ) ?: return null
         val cursor = MatrixCursor(LauncherSnapshotRows.COLUMNS, rows.size)
         rows.forEachIndexed { i, row -> cursor.addRow(arrayOf<Any?>(i, row.id, row.json)) }

@@ -61,11 +61,12 @@ class LauncherIntentReceiver : BroadcastReceiver() {
     /**
      * REFRESH, routed by liveness. With the renderer alive the request is queued
      * and the wake makes the web layer run every sync tier and re-push (it reports
-     * `ran` or `failed` into the log). With no renderer there is nothing to run it:
-     * the request is logged `deferred` and the launcher shows the honest age. A
-     * second REFRESH inside [INFLIGHT_MS] of one still running is `coalesced`.
-     * Every entry carries the liveness it saw, so standby-bucket deferral and
-     * dead-process gaps are visible in the launcher's diagnostics over time.
+     * `ran` or `failed` into the log). With no renderer, [LauncherRefreshWorker]
+     * is scheduled to run the same cycle headlessly and the entry reads
+     * `scheduled` until the worker reports; only a failed enqueue is `deferred`.
+     * A second REFRESH inside [INFLIGHT_MS] of one still queued or scheduled is
+     * `coalesced`. Every entry carries the liveness it saw, so standby-bucket
+     * deferral and dead-process gaps are visible in the launcher's diagnostics.
      */
     private fun refresh(context: Context, clientId: String) {
         val store = SharedDataStore(context)
@@ -74,10 +75,18 @@ class LauncherIntentReceiver : BroadcastReceiver() {
         val alive = MainActivity.rendererAlive
         val last = store.lastLauncherRefresh()
         val entry = JSONObject().put("clientId", clientId).put("requestedAt", now).put("liveness", if (alive) "alive" else "dead")
-        val inFlight = last != null && last.optString("outcome") == "queued" && !last.has("finishedAt") && now - last.optLong("requestedAt") < INFLIGHT_MS
+        val inFlight = last != null && last.optString("outcome") in IN_FLIGHT && !last.has("finishedAt") && now - last.optLong("requestedAt") < INFLIGHT_MS
         when {
             inFlight -> entry.put("outcome", "coalesced").put("reason", "a refresh is in flight")
-            !alive -> entry.put("outcome", "deferred").put("reason", "process not running")
+            !alive -> {
+                try {
+                    LauncherRefreshWorker.schedule(context, clientId)
+                    entry.put("outcome", "scheduled").put("reason", "process not running: headless run scheduled")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Could not schedule a headless refresh", e)
+                    entry.put("outcome", "deferred").put("reason", "process not running, and no headless run could be scheduled: ${e.message}")
+                }
+            }
             else -> {
                 entry.put("outcome", "queued")
                 val queued = JSONObject()
@@ -97,8 +106,9 @@ class LauncherIntentReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "LauncherIntents"
-        /** A queued refresh older than this with no outcome is treated as lost, not in flight. */
+        /** A queued or scheduled refresh older than this with no outcome is treated as lost, not in flight. */
         private const val INFLIGHT_MS = 60_000L
+        private val IN_FLIGHT = setOf("queued", "scheduled")
         const val ACTION_CREATE = "com.dayglance.app.launcher.CREATE"
         const val ACTION_COMPLETE = "com.dayglance.app.launcher.COMPLETE"
         const val ACTION_UNCOMPLETE = "com.dayglance.app.launcher.UNCOMPLETE"

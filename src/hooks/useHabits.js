@@ -2,22 +2,14 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { dateToString } from '../utils/taskUtils.js';
 import { getDeviceId, isNativeIOS } from '../native.js';
 import { changedHealthHabitIds } from '../utils/healthHabitChanges.js';
+import { readHabitsEnabled } from '../utils/storedSlices.js';
 
 const useHabits = ({ playUISound, hrOwnerRef }) => {
   const [habits, setHabits] = useState([]);
   const [habitLogs, setHabitLogs] = useState({});
-  const [habitsEnabled, setHabitsEnabled] = useState(() => {
-    // If the user has an explicit stored preference, use it.
-    const stored = localStorage.getItem('day-planner-habits-enabled');
-    if (stored !== null) return JSON.parse(stored);
-    // No stored preference: default OFF for new installs, but ON if the user
-    // already has habit data (upgrade migration — don't silently disable their habits).
-    try {
-      const existing = JSON.parse(localStorage.getItem('day-planner-habits') || '[]');
-      if (existing.length > 0) return true;
-    } catch (_) {}
-    return false;
-  });
+  // An explicit stored preference wins; without one, OFF for new installs but
+  // ON when habit data already exists (an update never silently hides it).
+  const [habitsEnabled, setHabitsEnabled] = useState(readHabitsEnabled);
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState(null); // null = adding new, object = editing
   const [draggedHabitIdx, setDraggedHabitIdx] = useState(null);

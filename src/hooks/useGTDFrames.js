@@ -1,12 +1,8 @@
 import { useState } from 'react';
+import { readGtdFrames } from '../utils/storedSlices.js';
 
 const useGTDFrames = () => {
-  const [gtdFrames, setGtdFrames] = useState(() => {
-    try {
-      const saved = localStorage.getItem('day-planner-gtd-frames');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  const [gtdFrames, setGtdFrames] = useState(readGtdFrames);
   const [showFramesModal, setShowFramesModal] = useState(false);
   const [framesModalTab, setFramesModalTab] = useState('frames'); // 'frames' | 'schedule'
   const [editingFrame, setEditingFrame] = useState(null); // frame object being edited, or 'new' for create

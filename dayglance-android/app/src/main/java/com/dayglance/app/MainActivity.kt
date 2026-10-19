@@ -284,6 +284,10 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        // The reverse lock (launcher/LauncherRefreshWorker.kt): a headless
+        // refresh in flight shares this WebView's storage and is torn down
+        // here, on this thread, before the live renderer loads.
+        com.dayglance.app.launcher.LauncherRefreshWorker.abortForLiveInstance()
         rendererAlive = true
         nativeBridge = NativeBridge(
             context = this,

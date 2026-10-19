@@ -11,6 +11,10 @@
 
     <!-- Notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Expedited WorkManager jobs run as a foreground service below Android 12
+         (launcher/LauncherRefreshWorker.kt); from 12 on they are JobScheduler
+         expedited jobs and this permission is unused. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Focus mode: Do Not Disturb control (requires user to grant DND access in system settings) -->

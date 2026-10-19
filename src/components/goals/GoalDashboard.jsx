@@ -39,7 +39,7 @@ import {
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
-import { noteLinkOf, noteLinkFromTitle } from '../../utils/obsidianProjectNotes.js';
+import { noteLinkOf, noteLinkFromTitle, noteCreateFields } from '../../utils/obsidianProjectNotes.js';
 import { isStreamPosture } from '../../utils/obsidianVaultPosture.js';
 import { TASK_COLORS, TAILWIND_TO_HEX, hexToRgba, PROJECT_FALLBACK_COLOR, getProjectColor } from '../../utils/colorUtils.js';
 import { dateToString } from '../../utils/taskUtils.js';
@@ -431,15 +431,29 @@ export const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDele
  * Links an EXISTING vault note by path (the plugin writes the id key), opens
  * it, unlinks it, and shows the missing state with a relink (ruling F). Reads
  * the live entity so the row reflects the link as soon as it lands.
+ *
+ * An unlinked entity can also have its note CREATED from here (owner,
+ * 2026-10-19): the same intent the new-entity checkbox sends, with the fields
+ * read from the record, so the plugin's layout and template apply and the
+ * link lands through the observation stream like any other. Plugin only, as
+ * the checkbox is; without a stream the button is disabled and says why.
  */
 const NoteLinkRow = ({ kind = 'project', id }) => {
   const { darkMode, borderClass, textPrimary, textSecondary } = useDayPlannerCtx();
   const { projects, goals } = useFeaturesCtx();
-  const { obsidianConfig, linkProjectNote, unlinkProjectNote, openInObsidian } = useSyncCtx();
+  const { obsidianConfig, linkProjectNote, unlinkProjectNote, openInObsidian, createProjectNote, bridgeHeartbeatRef } = useSyncCtx();
   const project = ((kind === 'goal' ? goals : projects) || []).find(e => e.id === id);
   const link = noteLinkOf(project);
   const [path, setPath] = useState(link?.name || '');
   const [error, setError] = useState('');
+  const [creating, setCreating] = useState(false);
+  const pluginInUse = isStreamPosture(bridgeHeartbeatRef?.current);
+  const canCreate = !link && !!createProjectNote;
+  const create = () => {
+    setError('');
+    if (createProjectNote?.(kind, project.id, noteCreateFields(kind, project))) setCreating(true);
+    else setError('Could not ask the bridge plugin to create the note. Check that the vault is paired and the plugin is running.');
+  };
   if (!project || (!obsidianConfig?.enabled && !link)) return null;
   const inputCls = `px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
     darkMode ? 'bg-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'
@@ -486,10 +500,28 @@ const NoteLinkRow = ({ kind = 'project', id }) => {
             {link?.missing && (
               <button type="button" className={btnCls} onClick={() => unlinkProjectNote?.(kind, project.id)}>Unlink</button>
             )}
+            {canCreate && !creating && (
+              <button
+                type="button"
+                className={`${btnCls} ${pluginInUse ? '' : 'opacity-60 cursor-not-allowed'}`}
+                disabled={!pluginInUse}
+                onClick={create}
+                data-create-note-existing={pluginInUse ? 'available' : 'needs-plugin'}
+                title={pluginInUse ? "Create the note where the bridge plugin's layout puts it" : 'Needs the dayGLANCE bridge plugin paired with this vault'}
+              >
+                Create in Obsidian
+              </button>
+            )}
           </div>
-          <div className={`text-[11px] ${textSecondary}`}>
-            Vault path of an existing note, or type its [[wikilink]] into the title above. With the dayGLANCE bridge plugin paired, the link is written into the note.
-          </div>
+          {creating ? (
+            <div data-create-note-existing="queued" className={`text-[11px] ${textSecondary}`}>
+              Creating the note in Obsidian. The link appears here once the bridge plugin has applied it; any notes in the box above move into the note.
+            </div>
+          ) : (
+            <div className={`text-[11px] ${textSecondary}`}>
+              Vault path of an existing note, or type its [[wikilink]] into the title above. With the dayGLANCE bridge plugin paired, the link is written into the note{canCreate ? ', and Create in Obsidian makes a new note where the plugin\'s layout puts it' : ''}.
+            </div>
+          )}
           {error && <div className="text-xs text-red-500">{error}</div>}
         </>
       )}

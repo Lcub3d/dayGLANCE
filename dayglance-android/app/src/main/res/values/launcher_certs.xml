@@ -18,8 +18,8 @@
     <string-array name="launcher_known_certs">
         <!-- GLANCElauncher release certificate (PLACEHOLDER: replace with the real digest) -->
         <item>0000000000000000000000000000000000000000000000000000000000000001</item>
-        <!-- GLANCElauncher debug certificate (PLACEHOLDER: replace; REMOVE before any public release) -->
-        <item>0000000000000000000000000000000000000000000000000000000000000002</item>
+        <!-- GLANCElauncher debug certificate (the Android debug key on the maintainer's Mac; REMOVE before any public release) -->
+        <item>72d984906c2e8974da1800fca30f221186be504b89b9f3a5331eae21d55e01b9</item>
         <!-- GLANCElauncher Play app signing certificate (PLACEHOLDER: fill in once the launcher ships on Play) -->
         <item>0000000000000000000000000000000000000000000000000000000000000003</item>
     </string-array>

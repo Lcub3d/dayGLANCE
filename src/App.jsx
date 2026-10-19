@@ -61,6 +61,7 @@ import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLoca
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
 import { planFrameNudge, resolveFrameNudgeAnswer } from './utils/frameNudge.js';
 import { getOverdueTasks as collectOverdueTasks } from './utils/getOverdueTasks.js';
+import { backupFingerprint, readLastRemoteBackup, writeLastRemoteBackup, canSkipRemoteUpload } from './utils/backupDedupe.js';
 import { recordLoadFailure } from './utils/loadFailures.js';
 import { parseICS, parseDatetime, filterByDateWindow, expandMultiDayEvent } from './utils/icsParser.js';
 import { buildCalendarProxyUrl } from './utils/calendarProxyUrl.js';
@@ -4715,7 +4716,10 @@ const DayPlanner = () => {
     try {
       setAutoBackupStatus(prev => ({ ...prev, local: { ...prev.local, status: 'backing-up' } }));
       const payload = buildAutoBackupPayload();
-      await autoBackupDB.saveBackup(frequency, payload);
+      // Skipped by the store when the content matches the last backup of this
+      // frequency (utils/backupDedupe.js, #2144). Still a success: that backup
+      // already holds it.
+      await autoBackupDB.saveBackup(frequency, payload, { fingerprint: await backupFingerprint(payload) });
       await autoBackupDB.pruneBackups(frequency, AUTO_BACKUP_RETENTION[frequency]);
       const now = new Date().toISOString();
       localStorage.setItem('day-planner-auto-backup-local-last', now);
@@ -4740,14 +4744,25 @@ const DayPlanner = () => {
     try {
       setAutoBackupStatus(prev => ({ ...prev, remote: { ...prev.remote, status: 'backing-up' } }));
       const payload = buildAutoBackupPayload();
-      await provider.uploadBackup(autoBackupConfig.remote, payload);
-      // Prune remote backups
-      const remoteFiles = await provider.listBackups(autoBackupConfig.remote);
-      const maxKeep = AUTO_BACKUP_RETENTION[frequency];
-      if (remoteFiles.length > maxKeep) {
-        const toDelete = remoteFiles.slice(maxKeep);
-        for (const f of toDelete) {
-          await provider.deleteBackup(autoBackupConfig.remote, f.filename);
+      // Skip the upload when the target already holds this exact content
+      // (utils/backupDedupe.js, #2144). The listing is a PROPFIND; the upload
+      // it saves is the whole payload.
+      const fingerprint = await backupFingerprint(payload);
+      const encrypted = hasEncryptionReady();
+      const last = readLastRemoteBackup();
+      const unchanged = fingerprint && last?.fingerprint === fingerprint
+        && canSkipRemoteUpload({ fingerprint, encrypted, last, remoteFiles: await provider.listBackups(autoBackupConfig.remote) });
+      if (!unchanged) {
+        const filename = await provider.uploadBackup(autoBackupConfig.remote, payload);
+        writeLastRemoteBackup({ fingerprint, filename, encrypted });
+        // Prune remote backups
+        const remoteFiles = await provider.listBackups(autoBackupConfig.remote);
+        const maxKeep = AUTO_BACKUP_RETENTION[frequency];
+        if (remoteFiles.length > maxKeep) {
+          const toDelete = remoteFiles.slice(maxKeep);
+          for (const f of toDelete) {
+            await provider.deleteBackup(autoBackupConfig.remote, f.filename);
+          }
         }
       }
       const now = new Date().toISOString();
@@ -4806,7 +4821,10 @@ const DayPlanner = () => {
 
   const loadAutoBackupHistory = async () => {
     try {
-      const localBackups = await autoBackupDB.listBackups();
+      // Ids, times and frequencies only: listBackups() loaded every retained
+      // payload (up to 66) just to draw this list (#2144). Restore fetches the
+      // one it needs with getBackup.
+      const localBackups = await autoBackupDB.listBackupMeta();
       let remoteBackups = [];
       if (autoBackupConfig.remote.enabled) {
         try {

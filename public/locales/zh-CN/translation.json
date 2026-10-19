@@ -1366,7 +1366,12 @@
     "importedCalendarEvents": "导入的日历事件",
     "title": "存储空间明细",
     "todoistReceipts": "Todoist 待处理操作",
-    "total": "本地存储：{{used}} / 约 5 MB（{{percent}}%）"
+    "total": "本地存储：{{used}} / 约 5 MB（{{percent}}%）",
+    "loadFailedTitle": "部分已保存的数据无法读取。",
+    "loadFailedBody": "dayGLANCE 不会覆盖这些数据，因此对这些数据的更改目前不会被保存。请下载一份副本、恢复备份，或丢弃这些数据。",
+    "loadFailedDownload": "下载副本",
+    "loadFailedDiscard": "丢弃",
+    "loadFailedDiscardConfirm": "要丢弃无法读取的数据吗？当前数据将覆盖保存，且无法撤销。如果之后可能需要，请先下载一份副本。"
   },
   "weeklyReview": {
     "tasksDone": "已完成任务",

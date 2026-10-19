@@ -1366,7 +1366,12 @@
     "importedCalendarEvents": "Événements de calendrier importés",
     "title": "Répartition du stockage",
     "todoistReceipts": "Opérations Todoist en attente",
-    "total": "Stockage local : {{used}} / ~5 Mo ({{percent}} %)"
+    "total": "Stockage local : {{used}} / ~5 Mo ({{percent}} %)",
+    "loadFailedTitle": "Certaines données enregistrées n'ont pas pu être lues.",
+    "loadFailedBody": "dayGLANCE ne les écrasera pas, donc les modifications de ces données ne sont pas enregistrées. Téléchargez une copie, restaurez une sauvegarde ou supprimez-les.",
+    "loadFailedDownload": "Télécharger une copie",
+    "loadFailedDiscard": "Supprimer",
+    "loadFailedDiscardConfirm": "Supprimer les données illisibles ? Vos données actuelles seront enregistrées par-dessus, et c'est irréversible. Téléchargez d'abord une copie si vous pourriez en avoir besoin."
   },
   "weeklyReview": {
     "tasksDone": "Tâches terminées",

@@ -169,3 +169,39 @@ describe('calendarFilter persistence — tray guard', () => {
     );
   });
 });
+
+// #2138: App's initializer reads the notes before anything else runs, and this
+// effect fires on mount. An unreadable notes value used to come back as {} and
+// be written straight over the stored copy.
+describe('useLocalStoragePersist leaves unreadable daily notes alone', () => {
+  let store;
+  beforeEach(async () => {
+    effects.length = 0;
+    store = { 'day-planner-daily-notes': '{"2026-10-18": {"content": "half' };
+    globalThis.localStorage = {
+      setItem: vi.fn((k, v) => { store[k] = v; }),
+      getItem: vi.fn((k) => store[k] ?? null),
+      removeItem: vi.fn(),
+    };
+    globalThis.window = {};
+  });
+  afterEach(() => { delete globalThis.localStorage; delete globalThis.window; });
+
+  it('does not write {} over notes that failed to load, and resumes once they are replaced', async () => {
+    // Fresh instances of both, so the hook and the test share one registry.
+    vi.resetModules();
+    const { default: persist } = await import('./useLocalStoragePersist.js');
+    const { recordLoadFailure } = await import('../utils/loadFailures.js');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    recordLoadFailure('day-planner-daily-notes', new Error('bad json'), store['day-planner-daily-notes']);
+    const dailyNotes = {};
+    persist(baseProps({ dailyNotes }));
+    mount();
+    expect(store['day-planner-daily-notes']).toBe('{"2026-10-18": {"content": "half');
+
+    // A sync apply writes valid notes; the effect may persist again.
+    store['day-planner-daily-notes'] = '{}';
+    change(dailyNotes);
+    expect(globalThis.localStorage.setItem).toHaveBeenCalledWith('day-planner-daily-notes', '{}');
+  });
+});

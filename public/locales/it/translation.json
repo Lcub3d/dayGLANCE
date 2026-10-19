@@ -1368,7 +1368,12 @@
     "importedCalendarEvents": "Eventi del calendario importati",
     "title": "Dettaglio dello spazio di archiviazione",
     "todoistReceipts": "Operazioni Todoist in sospeso",
-    "total": "Archivio locale: {{used}} / ~5 MB ({{percent}}%)"
+    "total": "Archivio locale: {{used}} / ~5 MB ({{percent}}%)",
+    "loadFailedTitle": "Alcuni dati salvati non sono leggibili.",
+    "loadFailedBody": "dayGLANCE non li sovrascriverà, quindi le modifiche a quei dati non vengono salvate. Scarica una copia, ripristina un backup o scartali.",
+    "loadFailedDownload": "Scarica una copia",
+    "loadFailedDiscard": "Scarta",
+    "loadFailedDiscardConfirm": "Scartare i dati illeggibili? I tuoi dati attuali verranno salvati al loro posto e non si potrà annullare. Scarica prima una copia se potrebbe servirti."
   },
   "weeklyReview": {
     "tasksDone": "Attività completate",

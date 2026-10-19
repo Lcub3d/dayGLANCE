@@ -1366,7 +1366,12 @@
     "importedCalendarEvents": "Importierte Kalenderereignisse",
     "title": "Speicherbelegung",
     "todoistReceipts": "Ausstehende Todoist-Vorgänge",
-    "total": "Lokaler Speicher: {{used}} / ca. 5 MB ({{percent}} %)"
+    "total": "Lokaler Speicher: {{used}} / ca. 5 MB ({{percent}} %)",
+    "loadFailedTitle": "Einige gespeicherte Daten konnten nicht gelesen werden.",
+    "loadFailedBody": "dayGLANCE überschreibt sie nicht, daher werden Änderungen an diesen Daten nicht gespeichert. Lade eine Kopie herunter, stelle ein Backup wieder her oder verwirf sie.",
+    "loadFailedDownload": "Kopie herunterladen",
+    "loadFailedDiscard": "Verwerfen",
+    "loadFailedDiscardConfirm": "Die unlesbaren Daten verwerfen? Deine aktuellen Daten werden darüber gespeichert, und das lässt sich nicht rückgängig machen. Lade vorher eine Kopie herunter, falls du sie brauchen könntest."
   },
   "weeklyReview": {
     "tasksDone": "Erledigte Aufgaben",

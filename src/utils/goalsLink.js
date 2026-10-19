@@ -6,6 +6,10 @@
 //   dayglance://project?id=…   the space, the project's goal (or the
 //                              standalone Projects list) selected and the
 //                              project's card scrolled into view and ringed
+//   …?tab=goals|projects       either link without an id: the space on that
+//                              panel (the launcher's "Goals" and "Projects"
+//                              links). An id's focus already picks the panel,
+//                              so tab is read only when there is no id.
 //   dayglance://today          today's calendar: the Calendar space, the
 //                              timeline tab on a phone, today selected
 //
@@ -24,18 +28,22 @@
  * @param {boolean} env.enabled   Goals & Projects is on.
  * @param {boolean} env.phone     The phone layout (the Goals tab, not the space).
  * @returns {null | { mobileTab: string|null, space: string|null,
- *                    focusGoalId: string|null, focusProjectId: string|null }}
+ *                    focusGoalId: string|null, focusProjectId: string|null,
+ *                    tab: 'goals'|'projects'|null }}
  *   null: not a goals link, or the feature is off (open the app as it is).
+ *   tab: the panel to show when nothing is focused; null otherwise.
  */
 export function resolveGoalsLink(action, params, { enabled, phone }) {
   if (action !== 'goal' && action !== 'project') return null;
   if (!enabled) return null;
   const id = params.get('id') || null;
+  const tab = params.get('tab');
   return {
     mobileTab: phone ? 'goals' : null,
     space: phone ? null : 'goals',
     focusGoalId: action === 'goal' ? id : null,
     focusProjectId: action === 'project' ? id : null,
+    tab: !id && (tab === 'goals' || tab === 'projects') ? tab : null,
   };
 }
 

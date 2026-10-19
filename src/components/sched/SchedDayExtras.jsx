@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { CalendarPlus } from 'lucide-react';
+import { CalendarClock, CalendarPlus } from 'lucide-react';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +46,9 @@ export const SchedDeadlineCard = ({ task, dateStr }) => {
         style={{ borderLeft: `4px solid ${hex}` }}
         title={t('common.edit', 'Edit')}
       >
+        {/* The deadline glyph (the summary strip's and the launcher's), where a
+            task card has its checkbox, so the two kinds of row line up. */}
+        <CalendarClock size={22} aria-hidden="true" className={`flex-shrink-0 ${darkMode ? 'text-gray-600' : 'text-stone-300'}`} />
         <div className="flex flex-col min-w-0 flex-1 gap-0.5">
           <span className={`text-sm font-medium ${textPrimary} truncate ${task.completed ? 'line-through' : ''}`}>
             {renderTitleWithoutTags(task.title)}

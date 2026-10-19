@@ -47,6 +47,12 @@ const base = { id: 'u1', title: 'Call the plumber', deadline: '2030-03-15', dura
 const scheduleButton = (html) => html.match(/<button[^>]*aria-label="Schedule for today"[^>]*>[\s\S]*?<\/button>/)?.[0] ?? '';
 
 describe('SchedDeadlineCard', () => {
+  // MUTATION: drop the leading CalendarClock and this fails.
+  it('leads with the deadline glyph where a task card has its checkbox', async () => {
+    const html = await render(base);
+    expect(html).toMatch(/<svg[^>]*class="lucide lucide-calendar-clock[ "]/);
+  });
+
   it('the card itself is the way INTO the editor, not into the time picker', async () => {
     const html = await render(base);
     expect(html).toContain('title="Edit"');

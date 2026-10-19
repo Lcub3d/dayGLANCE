@@ -1543,6 +1543,7 @@ const MobileDashboard = ({
   const {
     moveProject, goalsDashboardFocusId, setGoalsDashboardFocusId, setGoalsAreaFilter,
     goalsDashboardFocusProjectId, setGoalsDashboardFocusProjectId,
+    goalsDashboardFocusTab, setGoalsDashboardFocusTab,
   } = useFeaturesCtx();
   const { t } = useTranslation();
 
@@ -1652,6 +1653,16 @@ const MobileDashboard = ({
     setSelectedId(goals[idx].id);
     setGoalsDashboardFocusId(null);
   }, [goalsDashboardFocusId, isActive, goals]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Panel request (utils/goalsLink.js, a link with tab= and no id): just the
+  // tab. Declared before the focus effects below in the desktop space, and the
+  // focus effects run after this one, so a request carrying both lands on the
+  // focus's tab.
+  useEffect(() => {
+    if (!goalsDashboardFocusTab || !isActive) return;
+    onTabChange(goalsDashboardFocusTab);
+    setGoalsDashboardFocusTab(null);
+  }, [goalsDashboardFocusTab, isActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Project focus request (utils/goalsLink.js): its goal's page, or the
   // Projects tab on the Open/Completed list it is on with no text filter,
@@ -2547,6 +2558,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
     areas = [], goalsAreaFilter, setGoalsAreaFilter, goalsViewMode,
     goalsDashboardFocusId, setGoalsDashboardFocusId,
     goalsDashboardFocusProjectId, setGoalsDashboardFocusProjectId,
+    goalsDashboardFocusTab, setGoalsDashboardFocusTab,
     addGoal, updateGoal, deleteGoal,
     addProject, updateProject, moveProject,
     plannerProjectId, setPlannerProjectId,
@@ -2713,6 +2725,13 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   // tab with the Open/Completed list it is on and no text filter — then ring
   // its card and scroll to it once that list has rendered. The phone's
   // carousel consumes the same request itself (MobileDashboard).
+  // Panel request (utils/goalsLink.js): the sidebar tab alone.
+  useEffect(() => {
+    if (!desktop || !isActive || !goalsDashboardFocusTab) return;
+    setSidebarTab(goalsDashboardFocusTab);
+    setGoalsDashboardFocusTab(null);
+  }, [goalsDashboardFocusTab, isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!desktop || !isActive || !goalsDashboardFocusProjectId) return;
     const target = projectFocusTarget(goalsDashboardFocusProjectId, { projects: activeProjects, goals: activeGoals });

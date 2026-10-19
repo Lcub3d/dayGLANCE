@@ -142,3 +142,16 @@ describe('the project field (ruling G as amended): projectRefFor / resolveProjec
     expect(resolveProjectRef('', projects)).toBe(null);
   });
 });
+
+import { noteCreateFields } from './obsidianProjectNotes.js';
+
+describe('noteCreateFields (Create in Obsidian on an existing entity, owner 2026-10-19)', () => {
+  it('reads title, goal and description from the record, in the shape the new-entity path sends', () => {
+    expect(noteCreateFields('project', { id: 'p1', title: 'Roof', goalId: 'g1', description: 'Dry by spring.' }))
+      .toEqual({ title: 'Roof', goalId: 'g1', description: 'Dry by spring.' });
+    expect(noteCreateFields('project', { id: 'p2', title: 'Shed' })).toEqual({ title: 'Shed', goalId: null, description: '' });
+    // A goal nests under nothing, whatever the record carries.
+    expect(noteCreateFields('goal', { id: 'g1', title: 'Home', goalId: 'x', description: 7 })).toEqual({ title: 'Home', goalId: null, description: '' });
+    expect(noteCreateFields('project', undefined)).toEqual({ title: '', goalId: null, description: '' });
+  });
+});

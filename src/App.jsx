@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallba
 import i18n from 'i18next';
 import { Plus, Clock, X, GripVertical, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Moon, Sun, Upload, Inbox, AlertCircle, Calendar, Check, RefreshCw, Palette, Trash2, Undo2, BarChart3, SkipForward, Hash, MoreHorizontal, Save, Menu, BrainCircuit, AlertTriangle, FileText, ExternalLink, CheckSquare, HelpCircle, Sparkles, Link, GripHorizontal, Play, Pause, Trophy, Cloud, Settings, Search, Bell, Target, TrendingUp, Zap, CalendarDays, Ban, Volume2, VolumeX, Pencil, Eye, Filter, Smartphone, CheckCircle, Pin, PinOff, NotebookPen, MapPin, BookOpen, Flag, FolderOpen, Droplets, Footprints, Dumbbell, Apple, Cigarette, Coffee, Flame, Heart, ListChecks, Minus, Wine, Candy, Pill, Activity, CupSoda, Mic, MicOff, Loader, Key, Server, Wifi, WifiOff, LayoutGrid, RotateCcw } from 'lucide-react';
 import { mergeTaskArrays, mergeSyncData } from './mergeSync.js';
-import { hasNativeCalendar, electronGetCalendars, electronGetEventsByDate, electronRequestCalendarAccess, nativeEventToTask, nativeResultsToTasks } from './utils/nativeCalendar.js';
+import { hasNativeCalendar, electronGetCalendars, electronGetEventsByDate, electronRequestCalendarAccess, nativeEventToTask, nativeResultsToTasks, extendCalendarFilter } from './utils/nativeCalendar.js';
 import { isNativeAndroid, isNativeApp, isNativeIOS, nativeShareFile, nativeShowTaskNotification, nativeGetPendingAction, nativeSyncReminders, nativeGetEvents, nativeUpdateEvent, nativeGetCalendars, nativeHttpRequest, nativeWriteDailyNote, nativeClearVault, nativeEnterFocusMode, nativeExitFocusMode, nativeIsDndPermissionGranted, nativeRequestDndPermission, nativeGetWidgetPendingAction, triggerHaptic } from './native.js';
 import { readDailyNoteFresh, readDailyNoteNative, simpleHash as obsidianSimpleHash, buildNewObsidianTaskMeta, dailyNoteFilename } from './obsidian.js';
 import { appendTaskDirect, writeDailyNoteDirect } from './utils/obsidianDirectWrites.js';
@@ -61,6 +61,7 @@ import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLoca
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
 import { planFrameNudge, resolveFrameNudgeAnswer } from './utils/frameNudge.js';
 import { getOverdueTasks as collectOverdueTasks } from './utils/getOverdueTasks.js';
+import { recordLoadFailure } from './utils/loadFailures.js';
 import { parseICS, parseDatetime, filterByDateWindow, expandMultiDayEvent } from './utils/icsParser.js';
 import { buildCalendarProxyUrl } from './utils/calendarProxyUrl.js';
 import { absorbCalendarDays, absorbCalendarWindow, readCalendarProjectionCache, writeCalendarProjectionCache } from './utils/calendarProjectionCache.js';
@@ -234,6 +235,7 @@ import BucketListModal from './components/BucketListModal.jsx';
 import HabitModal from './components/HabitModal.jsx';
 import SubscriptionWall from './components/SubscriptionWall.jsx';
 import ReviewerBanner from './components/ReviewerBanner.jsx';
+import StorageBanner from './components/StorageBanner.jsx';
 import { useSubscription } from './hooks/useSubscription.js';
 import { useTranslation } from 'react-i18next';
 import { formatDuration } from './utils/formatDuration.js';
@@ -245,6 +247,7 @@ import { weekViewDatesFor } from './utils/weekViewDates.js';
 import { dayViewColumnsFor } from './utils/dayViewColumns.js';
 import { schedRollingWindow } from './utils/schedAgenda.js';
 import useTrayPopupVisible from './hooks/useTrayPopupVisible.js';
+import { writeItem } from './utils/storageWrites.js';
 
 // Encode a string that may contain non-ASCII characters as Base64.
 // btoa() throws InvalidCharacterError for codepoints > 255 (CJK, emoji, etc.).
@@ -391,7 +394,7 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-jobo-enabled');
     return saved !== null ? JSON.parse(saved) === true : false;
   });
-  useEffect(() => { localStorage.setItem('day-planner-jobo-enabled', JSON.stringify(joboEnabled)); }, [joboEnabled]);
+  useEffect(() => { writeItem('day-planner-jobo-enabled', JSON.stringify(joboEnabled)); }, [joboEnabled]);
   // Aspire (life planning: wish list, five-year vision, mottos) — placeholder
   // behind the same Experimental switch pattern; the FAB lives in the Goals &
   // Projects space.
@@ -399,7 +402,7 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-aspire-enabled');
     return saved !== null ? JSON.parse(saved) === true : false;
   });
-  useEffect(() => { localStorage.setItem('day-planner-aspire-enabled', JSON.stringify(aspireEnabled)); }, [aspireEnabled]);
+  useEffect(() => { writeItem('day-planner-aspire-enabled', JSON.stringify(aspireEnabled)); }, [aspireEnabled]);
   const [storedHiddenViews, setHiddenViews] = useState(() => {
     const saved = localStorage.getItem('day-planner-hidden-views');
     try { return normalizeHiddenViews(saved ? JSON.parse(saved) : null); } catch { return normalizeHiddenViews(null); }
@@ -536,6 +539,7 @@ const DayPlanner = () => {
   // Project whose PLANNER dashboard is open — rendered at the app top level so
   // it stacks between the G&P dashboard (z-60) and the task editor (z-80).
   const [plannerProjectId, setPlannerProjectId] = useState(null);
+  const closePlanner = useCallback(() => setPlannerProjectId(null), []);
   const [weekViewMode, setWeekViewMode] = useState(() => {
     const saved = localStorage.getItem('day-planner-week-view-mode');
     return saved ? JSON.parse(saved) : 'strict';
@@ -644,7 +648,7 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-inbox-auto-archive-days');
     return saved !== null ? JSON.parse(saved) : 14;
   });
-  useEffect(() => { localStorage.setItem('day-planner-inbox-auto-archive-days', JSON.stringify(inboxAutoArchiveDays)); }, [inboxAutoArchiveDays]);
+  useEffect(() => { writeItem('day-planner-inbox-auto-archive-days', JSON.stringify(inboxAutoArchiveDays)); }, [inboxAutoArchiveDays]);
   // Live Activity (iOS): OPT-IN, default off — the compact island widens the
   // sensor housing enough to hide the cellular/wifi status icons, so an
   // all-day ambient activity must be the user's choice. Device-local (not
@@ -653,22 +657,22 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-live-activity');
     return saved !== null ? JSON.parse(saved) : false;
   });
-  useEffect(() => { localStorage.setItem('day-planner-live-activity', JSON.stringify(liveActivityEnabled)); }, [liveActivityEnabled]);
+  useEffect(() => { writeItem('day-planner-live-activity', JSON.stringify(liveActivityEnabled)); }, [liveActivityEnabled]);
   const [weekStartDay, setWeekStartDay] = useState(() => {
     const saved = localStorage.getItem('day-planner-week-start-day');
     return saved !== null ? JSON.parse(saved) : defaultWeekStartDay(); // 0=Sunday, 1=Monday
   });
-  useEffect(() => { localStorage.setItem('day-planner-week-start-day', JSON.stringify(weekStartDay)); }, [weekStartDay]);
+  useEffect(() => { writeItem('day-planner-week-start-day', JSON.stringify(weekStartDay)); }, [weekStartDay]);
   const [homeTimezone, setHomeTimezone] = useState(() => {
     const saved = localStorage.getItem('day-planner-home-timezone');
     return saved || Intl.DateTimeFormat().resolvedOptions().timeZone;
   });
-  useEffect(() => { localStorage.setItem('day-planner-home-timezone', homeTimezone); }, [homeTimezone]);
+  useEffect(() => { writeItem('day-planner-home-timezone', homeTimezone); }, [homeTimezone]);
   const [weekTimelineStartHour, setWeekTimelineStartHour] = useState(() => {
     const saved = localStorage.getItem('day-planner-week-timeline-start-hour');
     return saved !== null ? JSON.parse(saved) : 0;
   });
-  useEffect(() => { localStorage.setItem('day-planner-week-timeline-start-hour', JSON.stringify(weekTimelineStartHour)); }, [weekTimelineStartHour]);
+  useEffect(() => { writeItem('day-planner-week-timeline-start-hour', JSON.stringify(weekTimelineStartHour)); }, [weekTimelineStartHour]);
   // The matching upper bound. 24 means "no trim", which is the default: WEEK has
   // always drawn the whole day, and trimming it is opt-in exactly as the start
   // hour is. Together they are what make a WEEK row tall enough to read — the
@@ -678,7 +682,7 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-week-timeline-end-hour');
     return saved !== null ? JSON.parse(saved) : 24;
   });
-  useEffect(() => { localStorage.setItem('day-planner-week-timeline-end-hour', JSON.stringify(weekTimelineEndHour)); }, [weekTimelineEndHour]);
+  useEffect(() => { writeItem('day-planner-week-timeline-end-hour', JSON.stringify(weekTimelineEndHour)); }, [weekTimelineEndHour]);
   const { weather, setWeather, weatherZip, setWeatherZip, weatherTempUnit, setWeatherTempUnit, fetchWeather } = useWeather();
   const [weatherEnabled, setWeatherEnabled] = useState(() => {
     const saved = localStorage.getItem('day-planner-weather-enabled');
@@ -688,8 +692,8 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-daily-content-enabled');
     return saved !== null ? JSON.parse(saved) : true;
   });
-  useEffect(() => { localStorage.setItem('day-planner-weather-enabled', JSON.stringify(weatherEnabled)); }, [weatherEnabled]);
-  useEffect(() => { localStorage.setItem('day-planner-daily-content-enabled', JSON.stringify(dailyContentEnabled)); }, [dailyContentEnabled]);
+  useEffect(() => { writeItem('day-planner-weather-enabled', JSON.stringify(weatherEnabled)); }, [weatherEnabled]);
+  useEffect(() => { writeItem('day-planner-daily-content-enabled', JSON.stringify(dailyContentEnabled)); }, [dailyContentEnabled]);
   const [syncUrl, setSyncUrl] = useState('');
   // When multi-user is on, whether to include CalDAV credentials (not just URLs)
   // in the per-user calendar config that syncs across this user's devices. Only
@@ -778,7 +782,7 @@ const DayPlanner = () => {
   } = useCalendarSync();
   // Android device calendars — populated on first load when running in the native WebView
   const [availableCalendars, setAvailableCalendars] = useState([]);
-  // IDs of calendars to include; empty array = show all
+  // IDs of calendars to include; empty array = show all, [CALENDAR_FILTER_NONE] = show none
   const [calendarFilter, setCalendarFilter] = useState(() => {
     try { return JSON.parse(localStorage.getItem('day-planner-calendar-filter') || '[]'); } catch { return []; }
   });
@@ -871,7 +875,7 @@ const DayPlanner = () => {
     catch { return normalizeBucketConfig(null); }
   });
   useEffect(() => {
-    localStorage.setItem('day-planner-bucket-config', JSON.stringify(bucketConfig));
+    writeItem('day-planner-bucket-config', JSON.stringify(bucketConfig));
   }, [bucketConfig]);
   const updateBucketConfig = (patch) =>
     setBucketConfig(prev => normalizeBucketConfig({ ...prev, ...patch, updatedAt: new Date().toISOString() }));
@@ -1046,10 +1050,16 @@ const DayPlanner = () => {
   const [spaceCardSize, setSpaceCardSizeState] = useState(() => readCardSize());
   const setSpaceCardSize = useCallback((id) => setSpaceCardSizeState(writeCardSize(id)), []);
   const [dailyNotes, setDailyNotes] = useState(() => {
+    let saved = null;
     try {
-      const saved = localStorage.getItem('day-planner-daily-notes');
+      saved = localStorage.getItem('day-planner-daily-notes');
       return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
+    } catch (error) {
+      // Unreadable is not empty: record it so the notes persist effect does not
+      // write this {} over the stored copy on mount (utils/loadFailures.js).
+      if (saved !== null) recordLoadFailure('day-planner-daily-notes', error, saved);
+      return {};
+    }
   });
   const localizedDailyNoteTemplate = buildLocalizedDailyNoteTemplate(t);
   const localizedTaskHeading = buildLocalizedTaskHeading(t);
@@ -1531,6 +1541,7 @@ const DayPlanner = () => {
     pushUndo,
     setTasks, setUnscheduledTasks,
     playUISound,
+    onStorageFull: () => setUndoToast({ message: t('backup.storageFull'), kind: 'warning' }),
   });
 
   // AI configuration, voice input, and weekly review state
@@ -1681,6 +1692,7 @@ const DayPlanner = () => {
     setInboxArchivedExpanded,
     setDailyNotesModalDate,
     calendarRef,
+    closePlanner,
   });
 
   const {
@@ -2132,7 +2144,7 @@ const DayPlanner = () => {
 
   // Persist darkMode to localStorage and update theme-color meta tag
   useEffect(() => {
-    localStorage.setItem('day-planner-darkmode', JSON.stringify(darkMode));
+    writeItem('day-planner-darkmode', JSON.stringify(darkMode));
     document.documentElement.classList.toggle('dark', darkMode);
     document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
     document.documentElement.style.backgroundColor = darkMode ? '#1f2937' : '#ffffff';
@@ -2148,22 +2160,22 @@ const DayPlanner = () => {
   }, [darkMode]);
 
   useEffect(() => {
-    localStorage.setItem('day-planner-view-mode', JSON.stringify(viewMode));
+    writeItem('day-planner-view-mode', JSON.stringify(viewMode));
   }, [viewMode]);
 
   useEffect(() => {
-    localStorage.setItem('day-planner-default-view', JSON.stringify(defaultView));
+    writeItem('day-planner-default-view', JSON.stringify(defaultView));
   }, [defaultView]);
 
   useEffect(() => {
-    localStorage.setItem('day-planner-hidden-views', JSON.stringify(storedHiddenViews));
+    writeItem('day-planner-hidden-views', JSON.stringify(storedHiddenViews));
   }, [storedHiddenViews]);
 
   useEffect(() => {
-    localStorage.setItem('day-planner-day-view-mode', JSON.stringify(dayViewMode));
+    writeItem('day-planner-day-view-mode', JSON.stringify(dayViewMode));
   }, [dayViewMode]);
   useEffect(() => {
-    localStorage.setItem('day-planner-week-view-mode', JSON.stringify(weekViewMode));
+    writeItem('day-planner-week-view-mode', JSON.stringify(weekViewMode));
   }, [weekViewMode]);
   // mobileViewMode is deliberately NOT persisted — the session opens in
   // mobileDefaultView (settings picker) and header toggling is ephemeral.
@@ -2171,11 +2183,11 @@ const DayPlanner = () => {
     if (listEndOfDayTime === null) {
       localStorage.removeItem('day-planner-list-end-of-day');
     } else {
-      localStorage.setItem('day-planner-list-end-of-day', listEndOfDayTime);
+      writeItem('day-planner-list-end-of-day', listEndOfDayTime);
     }
   }, [listEndOfDayTime]);
   useEffect(() => {
-    localStorage.setItem('day-planner-glance-page', String(glancePage));
+    writeItem('day-planner-glance-page', String(glancePage));
   }, [glancePage]);
 
   // Clear any stale history state left from a previous session so Android back
@@ -2432,7 +2444,7 @@ const DayPlanner = () => {
     const tombstones = JSON.parse(localStorage.getItem('day-planner-deleted-frame-ids') || '{}');
     const now = new Date().toISOString();
     for (const f of removed) tombstones[String(f.id)] = now;
-    localStorage.setItem('day-planner-deleted-frame-ids', JSON.stringify(tombstones));
+    writeItem('day-planner-deleted-frame-ids', JSON.stringify(tombstones));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gtdFrames]);
 
@@ -2778,7 +2790,7 @@ const DayPlanner = () => {
   const icsCalendarsJson = JSON.stringify(icsCalendars);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { writeConfigTimestamp('day-planner-ics-calendars-updated-at'); }, [icsCalendarsJson]);
-  useEffect(() => { localStorage.setItem('day-planner-sync-calendar-creds', String(syncCalendarCreds)); }, [syncCalendarCreds]);
+  useEffect(() => { writeItem('day-planner-sync-calendar-creds', String(syncCalendarCreds)); }, [syncCalendarCreds]);
 
   // One-time per-device cleanup when this device first runs in per-user calendar
   // mode (multi-user on + a "me" selected). Calendar config and CalDAV-imported
@@ -3005,7 +3017,7 @@ const DayPlanner = () => {
     if (!cloudSyncConfig?.enabled) return;
 
     if (cloudSyncConfig?.syncFolder !== 'dayglance') {
-      localStorage.setItem(CHECKED_KEY, '1');
+      writeItem(CHECKED_KEY, '1');
       return;
     }
 
@@ -3020,8 +3032,8 @@ const DayPlanner = () => {
       const base = cloudSyncConfig.webdavUrl.replace(/\/+$/, '');
       oldFolderPath = `${base}/dayglance/`;
     }
-    if (oldFolderPath) localStorage.setItem(NOTICE_KEY, oldFolderPath);
-    localStorage.setItem(CHECKED_KEY, '1');
+    if (oldFolderPath) writeItem(NOTICE_KEY, oldFolderPath);
+    writeItem(CHECKED_KEY, '1');
     // One-time migration notice (guarded by CHECKED_KEY). Reads the other
     // cloudSyncConfig fields at check time; keyed on enabled + syncFolder.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4200,11 +4212,7 @@ const DayPlanner = () => {
         // from localStorage, before the async calendar list does). Mobile is
         // unaffected — nativeGetCalendars() is synchronous.
         if (prev.length > 0) {
-          setCalendarFilter(f => {
-            if (f.length === 0) return f;
-            const toAdd = newCals.map(c => c.id).filter(id => !f.includes(id));
-            return toAdd.length > 0 ? [...f, ...toAdd] : f;
-          });
+          setCalendarFilter(f => extendCalendarFilter(f, newCals.map(c => c.id)));
         }
         return [...prev, ...newCals];
       });
@@ -4612,14 +4620,16 @@ const DayPlanner = () => {
       }
     };
 
-    const filename = `dayglance-backup-${dateToString(new Date())}.json`;
-    const jsonStr = JSON.stringify(backup, null, 2);
+    exportJsonFile(`dayglance-backup-${dateToString(new Date())}.json`, JSON.stringify(backup, null, 2));
+  };
 
-    // In both native WebViews the <a download> trick is silently ignored
-    // (Android WebView has no DownloadListener; WKWebView never handles blob
-    // downloads). Use the native share sheet instead so the user can save to
-    // Files / Drive. A null result means the share sheet was dismissed or the
-    // bridge is missing — dismissal is a cancel, but success:false is an error.
+  // Hand a JSON file to the user. In both native WebViews the <a download>
+  // trick is silently ignored (Android WebView has no DownloadListener;
+  // WKWebView never handles blob downloads). Use the native share sheet
+  // instead so the user can save to Files / Drive. A null result means the
+  // share sheet was dismissed or the bridge is missing — dismissal is a
+  // cancel, but success:false is an error.
+  const exportJsonFile = (filename, jsonStr) => {
     if (isNativeApp()) {
       const result = nativeShareFile(filename, jsonStr);
       if (result && result.success === false) {
@@ -7425,6 +7435,9 @@ const DayPlanner = () => {
       todayRoutines, routineCompletions, routinesEnabled,
       frameInstancesForDate: getFrameInstancesForDate, getDayWindow,
       weatherCoords: getStoredWeatherCoords(),
+      weatherHourlyByDate: weather?.hourlyByDate ?? null,
+      weatherTempUnit,
+      dialAlarm: loadAlarmPrefs(),
       use24Hour: use24HourClock,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       updatedAt: Date.now(),
@@ -7442,7 +7455,7 @@ const DayPlanner = () => {
   }, [
     dataLoaded, isResizing, tasks, unscheduledTasks, expandedRecurringTasks,
     projects, goals, goalsProjectsEnabled, isVisibleForUser,
-    todayRoutines, routineCompletions, routinesEnabled,
+    todayRoutines, routineCompletions, routinesEnabled, weather, weatherTempUnit,
     getFrameInstancesForDate, getDayWindow, use24HourClock, currentTime,
   ]);
 
@@ -9492,8 +9505,11 @@ const DayPlanner = () => {
         </div>
       )}
 
-      {/* Refocus timeline toast — all form factors except mobile list view */}
-      {timelineScrolledAway && effectiveViewMode === 'multi' && !((isMobile && (mobileViewMode === 'list' || mobileViewMode === 'sched' || mobileViewMode === 'month')) || tabletListView) && (
+      {/* Refocus timeline toast — all form factors except mobile list view.
+          Not over the Goals & Projects space: it replaces the calendar, but
+          timelineScrolledAway keeps its value, so the pill would point at a
+          timeline that is no longer on screen (#2134). */}
+      {timelineScrolledAway && effectiveViewMode === 'multi' && desktopSpace !== 'goals' && !((isMobile && (mobileViewMode === 'list' || mobileViewMode === 'sched' || mobileViewMode === 'month')) || tabletListView) && (
         <RefocusTimelineToast isMobile={isMobile} onRefocus={() => { setTimelineScrolledAway(false); scrollToCurrentHour(true); }} />
       )}
 
@@ -10133,6 +10149,18 @@ const DayPlanner = () => {
           only, never genuine purchasers. */}
       {isReviewerUnlocked && (
         <ReviewerBanner darkMode={darkMode} onExit={exitReviewerMode} />
+      )}
+
+      {/* Storage that is not keeping the user's data: saved data that could not
+          be read at load (#2138; the save pass leaves those keys alone until
+          repaired or discarded) or writes rejected because storage is full
+          (#2139). Persistent until resolved. The tray never saves. */}
+      {!isTrayMode && (
+        <StorageBanner
+          darkMode={darkMode}
+          onDownload={exportJsonFile}
+          onOpenStorage={() => setShowStorageBreakdown(true)}
+        />
       )}
 
       {/* Subscription wall — shown on Android, iOS, and macOS when subscription is inactive.

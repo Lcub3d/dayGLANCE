@@ -706,7 +706,9 @@
     "beta": "Beta",
     "calDAVSyncHint": "Para sincronizar tarefas concluídas de volta: utilize o URL da coleção CalDAV (sem ?export). No Nextcloud, o ID do calendário no URL pode ser diferente do nome apresentado.",
     "deviceCalendarDescription": "Os eventos são lidos das contas do dispositivo. Utilize a secção Calendários do dispositivo abaixo para escolher os calendários a apresentar.",
-    "deviceCalendarFilterHint": "Desmarque um calendário para o ocultar. Se estiverem todos marcados ou desmarcados, será apresentado tudo.",
+    "deviceCalendarFilterHint": "Desmarque um calendário para ocultar os respetivos eventos. Desmarque todos para ocultar todos os calendários do dispositivo.",
+    "deviceCalendarsShowAll": "Mostrar todos",
+    "deviceCalendarsHideAll": "Ocultar todos",
     "glanceEncryptEvents": "Cifrar eventos de intents",
     "glanceEncryptionEnabledHint": "Utiliza a sua frase-passe de sincronização na nuvem. Configure uma vez; permanece ativa entre sessões.",
     "glanceEncryptionRequiredHint": "Ative primeiro a cifra da sincronização na nuvem.",
@@ -1366,7 +1368,13 @@
     "importedCalendarEvents": "Eventos de calendário importados",
     "title": "Detalhes do armazenamento",
     "todoistReceipts": "Operações pendentes do Todoist",
-    "total": "Armazenamento local: {{used}} / ~5 MB ({{percent}}%)"
+    "total": "Armazenamento local: {{used}} / ~5 MB ({{percent}}%)",
+    "loadFailedTitle": "Não foi possível ler alguns dados guardados.",
+    "loadFailedBody": "O dayGLANCE não os vai substituir, por isso as alterações a esses dados não estão a ser guardadas. Transfira uma cópia, restaure uma cópia de segurança ou descarte-os.",
+    "loadFailedDownload": "Transferir uma cópia",
+    "loadFailedDiscard": "Descartar",
+    "loadFailedDiscardConfirm": "Descartar os dados ilegíveis? Os seus dados atuais serão guardados por cima, e isto não pode ser anulado. Transfira primeiro uma cópia, se puder precisar dela.",
+    "seeWhatIsUsingSpace": "Ver o que está a ocupar espaço"
   },
   "weeklyReview": {
     "tasksDone": "Tarefas concluídas",

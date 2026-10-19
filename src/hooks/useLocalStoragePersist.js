@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useNotifyTrayOnChange } from '../utils/trayNotify.js';
 import { isTrayMode } from '../utils/trayMode.js';
+import { isLoadProtected } from '../utils/loadFailures.js';
+import { writeItem } from '../utils/storageWrites.js';
 
 export default function useLocalStoragePersist({
   minimizedSections,
@@ -21,61 +23,64 @@ export default function useLocalStoragePersist({
 }) {
   // Persist minimizedSections to localStorage
   useEffect(() => {
-    localStorage.setItem('minimizedSections', JSON.stringify(minimizedSections));
+    writeItem('minimizedSections', JSON.stringify(minimizedSections));
   }, [minimizedSections]);
 
   // Persist use24HourClock to localStorage
   useEffect(() => {
-    localStorage.setItem('day-planner-use-24h-clock', JSON.stringify(use24HourClock));
+    writeItem('day-planner-use-24h-clock', JSON.stringify(use24HourClock));
   }, [use24HourClock]);
 
   // Persist inboxPriorityFilter to localStorage
   useEffect(() => {
-    localStorage.setItem('inboxPriorityFilter', JSON.stringify(inboxPriorityFilter));
+    writeItem('inboxPriorityFilter', JSON.stringify(inboxPriorityFilter));
   }, [inboxPriorityFilter]);
 
   // Persist hideCompletedInbox to localStorage
   useEffect(() => {
-    localStorage.setItem('hideCompletedInbox', hideCompletedInbox.toString());
+    writeItem('hideCompletedInbox', hideCompletedInbox.toString());
   }, [hideCompletedInbox]);
 
   // Persist hideProjectTasksInbox to localStorage
   useEffect(() => {
-    localStorage.setItem('hideProjectTasksInbox', hideProjectTasksInbox.toString());
+    writeItem('hideProjectTasksInbox', hideProjectTasksInbox.toString());
   }, [hideProjectTasksInbox]);
 
   // Persist hideStandaloneTasksInbox to localStorage
   useEffect(() => {
-    localStorage.setItem('hideStandaloneTasksInbox', hideStandaloneTasksInbox.toString());
+    writeItem('hideStandaloneTasksInbox', hideStandaloneTasksInbox.toString());
   }, [hideStandaloneTasksInbox]);
 
   // Persist inbox tag and project filters to localStorage
   useEffect(() => {
-    localStorage.setItem('inboxTagFilter', JSON.stringify(inboxTagFilter));
+    writeItem('inboxTagFilter', JSON.stringify(inboxTagFilter));
   }, [inboxTagFilter]);
 
   useEffect(() => {
-    localStorage.setItem('inboxProjectFilter', JSON.stringify(inboxProjectFilter));
+    writeItem('inboxProjectFilter', JSON.stringify(inboxProjectFilter));
   }, [inboxProjectFilter]);
 
   // Persist priorityPromptDismissed to localStorage
   useEffect(() => {
-    localStorage.setItem('priorityPromptDismissed', priorityPromptDismissed.toString());
+    writeItem('priorityPromptDismissed', priorityPromptDismissed.toString());
   }, [priorityPromptDismissed]);
 
   useEffect(() => {
     if (!skipOnboardingPersist.current) {
-      localStorage.setItem('sectionInfoDismissed', JSON.stringify(sectionInfoDismissed));
+      writeItem('sectionInfoDismissed', JSON.stringify(sectionInfoDismissed));
     }
   }, [sectionInfoDismissed, skipOnboardingPersist]);
 
   // Persist dailyNotes to localStorage and trigger cloud sync upload
   useEffect(() => {
-    localStorage.setItem('day-planner-daily-notes', JSON.stringify(dailyNotes));
+    // Unreadable notes are not empty notes: this state never saw them, so it
+    // must not be written over them (utils/loadFailures.js, #2138).
+    if (isLoadProtected('day-planner-daily-notes')) return;
+    writeItem('day-planner-daily-notes', JSON.stringify(dailyNotes));
     if (!suppressCloudUploadRef.current && (!cloudSyncConfig?.enabled || cloudSyncInitialDoneRef.current)) {
-      localStorage.setItem('day-planner-cloud-sync-local-modified', new Date().toISOString());
+      writeItem('day-planner-cloud-sync-local-modified', new Date().toISOString());
       // A note edited here (useDataPersistence stamps the same key for the rest).
-      localStorage.setItem('day-planner-local-edit-at', new Date().toISOString());
+      writeItem('day-planner-local-edit-at', new Date().toISOString());
     }
     // Keyed on dailyNotes only: this persists on note change and reads the sync
     // guards (refs + current enabled flag) as live values. Adding cloudSyncConfig
@@ -85,17 +90,17 @@ export default function useLocalStoragePersist({
 
   // Persist daily note template
   useEffect(() => {
-    localStorage.setItem('day-planner-daily-note-template', dailyNoteTemplate);
+    writeItem('day-planner-daily-note-template', dailyNoteTemplate);
   }, [dailyNoteTemplate]);
 
   // Persist calendar URL auth to localStorage
   useEffect(() => {
-    localStorage.setItem('day-planner-calendar-url-auth', JSON.stringify(calendarUrlAuth));
+    writeItem('day-planner-calendar-url-auth', JSON.stringify(calendarUrlAuth));
   }, [calendarUrlAuth]);
 
   // Persist auto-backup config
   useEffect(() => {
-    localStorage.setItem('day-planner-auto-backup-config', JSON.stringify(autoBackupConfig));
+    writeItem('day-planner-auto-backup-config', JSON.stringify(autoBackupConfig));
   }, [autoBackupConfig]);
 
   // Persist calendar filter whenever it changes.
@@ -109,7 +114,7 @@ export default function useLocalStoragePersist({
   // its own render; it just stops persisting it.
   useEffect(() => {
     if (isTrayMode) return;
-    localStorage.setItem('day-planner-calendar-filter', JSON.stringify(calendarFilter));
+    writeItem('day-planner-calendar-filter', JSON.stringify(calendarFilter));
   }, [calendarFilter]);
 
   // ── Tray popup invalidation ───────────────────────────────────────────────

@@ -9,15 +9,15 @@ import org.json.JSONObject
  * collection's JSON object and its id. Pure over the JSON text so the mapping
  * is unit-tested on the JVM; the provider only adds the Android plumbing.
  *
- * Collections: `tasks`, `goals`, `projects`, `routines`, `frames` (arrays of
- * objects with an `id`), `dayShape` (one row, id "today"), `meta` (one row:
+ * Collections: `tasks`, `goals`, `projects`, `routines`, `frames`, `weather` (arrays of
+ * objects with an `id`; a weather row per forecast date), `dayShape` (one row, id "today"), `meta` (one row:
  * version, updatedAt, timezone, today, handledWrites).
  */
 object LauncherSnapshotRows {
 
     const val AUTHORITY = "com.dayglance.app.launcher"
 
-    val COLLECTIONS: Set<String> = setOf("tasks", "goals", "projects", "routines", "frames", "dayShape", "meta")
+    val COLLECTIONS: Set<String> = setOf("tasks", "goals", "projects", "routines", "frames", "weather", "dayShape", "meta")
 
     /** The cursor's columns: a row number, the row's id, and the row as JSON. */
     val COLUMNS = arrayOf("_id", "id", "json")

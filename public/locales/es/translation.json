@@ -706,7 +706,9 @@
     "beta": "Beta",
     "calDAVSyncHint": "Para devolver las tareas completadas: la URL de la colección CalDAV (sin ?export). En Nextcloud, el ID del calendario en la URL puede ser distinto del nombre mostrado.",
     "deviceCalendarDescription": "Los eventos se leen de las cuentas del dispositivo. Usa la sección Calendarios del dispositivo que aparece abajo para elegir cuáles quieres mostrar.",
-    "deviceCalendarFilterHint": "Desmarca un calendario para ocultarlo. Si están todos marcados o todos desmarcados, se muestra todo.",
+    "deviceCalendarFilterHint": "Desmarca un calendario para ocultar sus eventos. Desmárcalos todos para ocultar todos los calendarios del dispositivo.",
+    "deviceCalendarsShowAll": "Mostrar todos",
+    "deviceCalendarsHideAll": "Ocultar todos",
     "glanceEncryptEvents": "Cifrar eventos de intents",
     "glanceEncryptionEnabledHint": "Usa tu frase de contraseña de sincronización en la nube. Se configura una vez y permanece activa entre sesiones.",
     "glanceEncryptionRequiredHint": "Primero debes activar el cifrado de la sincronización en la nube.",
@@ -1366,7 +1368,13 @@
     "importedCalendarEvents": "Eventos de calendario importados",
     "title": "Desglose del almacenamiento",
     "todoistReceipts": "Operaciones pendientes de Todoist",
-    "total": "Almacenamiento local: {{used}} / ~5 MB ({{percent}}%)"
+    "total": "Almacenamiento local: {{used}} / ~5 MB ({{percent}}%)",
+    "loadFailedTitle": "No se pudieron leer algunos datos guardados.",
+    "loadFailedBody": "dayGLANCE no los sobrescribirá, así que los cambios en esos datos no se están guardando. Descarga una copia, restaura una copia de seguridad o descártalos.",
+    "loadFailedDownload": "Descargar una copia",
+    "loadFailedDiscard": "Descartar",
+    "loadFailedDiscardConfirm": "¿Descartar los datos ilegibles? Tus datos actuales se guardarán encima y no se podrá deshacer. Descarga antes una copia si podrías necesitarla.",
+    "seeWhatIsUsingSpace": "Ver qué ocupa espacio"
   },
   "weeklyReview": {
     "tasksDone": "Tareas completadas",

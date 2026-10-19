@@ -7,6 +7,7 @@ import {
 import { isTrayMode } from '../utils/trayMode.js';
 import { notBucketed } from '../utils/bucketList.js';
 import { dateToString } from '../utils/taskUtils.js';
+import { writeItem } from '../utils/storageWrites.js';
 
 /**
  * The TRMNL e-ink dashboard: its config and status, and the push of today's
@@ -53,7 +54,7 @@ const useTrmnlSync = ({
   // Persist TRMNL config
   useEffect(() => {
     if (trmnlConfig) {
-      localStorage.setItem('day-planner-trmnl-config', JSON.stringify(trmnlConfig));
+      writeItem('day-planner-trmnl-config', JSON.stringify(trmnlConfig));
     } else {
       localStorage.removeItem('day-planner-trmnl-config');
     }

@@ -6,6 +6,7 @@ import { isDbIntentsEnabled } from '../intents/dbIntentsConfig.js';
 import { loadVaultIntentsRootKey } from '../intents/intentsKeyStore.js';
 import { SECURE_SLOT, secureGet, secureSet, secureStoreAvailable } from '../utils/nativeSecureStore.js';
 import { directAccessEncryptsWrites } from '../sync/directAccessTransport.js';
+import { writeItem } from '../utils/storageWrites.js';
 
 const useCloudSync = () => {
   const [cloudSyncConfig, setCloudSyncConfig] = useState(() => {
@@ -78,7 +79,7 @@ const useCloudSync = () => {
   // Persist cloud sync config
   useEffect(() => {
     if (cloudSyncConfig) {
-      localStorage.setItem('day-planner-cloud-sync-config', JSON.stringify(cloudSyncConfig));
+      writeItem('day-planner-cloud-sync-config', JSON.stringify(cloudSyncConfig));
     } else {
       localStorage.removeItem('day-planner-cloud-sync-config');
     }

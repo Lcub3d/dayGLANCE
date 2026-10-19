@@ -725,7 +725,9 @@
     "beta": "Beta",
     "calDAVSyncHint": "Do zwrotnej synchronizacji ukończeń: adres URL kolekcji CalDAV (bez ?export). W Nextcloud identyfikator kalendarza w adresie może różnić się od wyświetlanej nazwy.",
     "deviceCalendarDescription": "Wydarzenia kalendarza są odczytywane z kont Twojego urządzenia. W sekcji Kalendarze urządzenia poniżej wybierz, które kalendarze pokazywać.",
-    "deviceCalendarFilterHint": "Odznacz, aby ukryć kalendarze. Zostaw wszystkie zaznaczone, aby pokazać wszystko.",
+    "deviceCalendarFilterHint": "Odznacz kalendarz, aby ukryć jego wydarzenia. Odznacz wszystkie, aby ukryć wszystkie kalendarze urządzenia.",
+    "deviceCalendarsShowAll": "Pokaż wszystkie",
+    "deviceCalendarsHideAll": "Ukryj wszystkie",
     "glanceEncryptEvents": "Szyfruj zdarzenia intencji",
     "glanceEncryptionEnabledHint": "Używa Twojego hasła synchronizacji w chmurze. Wystarczy jednorazowa konfiguracja; pozostaje aktywne między sesjami.",
     "glanceEncryptionRequiredHint": "Wymaga wcześniejszego włączenia szyfrowania synchronizacji w chmurze.",
@@ -1399,7 +1401,13 @@
     "importedCalendarEvents": "Zaimportowane wydarzenia kalendarza",
     "title": "Zużycie pamięci",
     "todoistReceipts": "Oczekujące operacje Todoist",
-    "total": "Pamięć lokalna: {{used}} / ~5 MB ({{percent}}%)"
+    "total": "Pamięć lokalna: {{used}} / ~5 MB ({{percent}}%)",
+    "loadFailedTitle": "Nie udało się odczytać części zapisanych danych.",
+    "loadFailedBody": "dayGLANCE ich nie nadpisze, więc zmiany w tych danych nie są zapisywane. Pobierz kopię, przywróć kopię zapasową lub je odrzuć.",
+    "loadFailedDownload": "Pobierz kopię",
+    "loadFailedDiscard": "Odrzuć",
+    "loadFailedDiscardConfirm": "Odrzucić nieczytelne dane? Twoje bieżące dane zostaną zapisane w ich miejsce i nie da się tego cofnąć. Najpierw pobierz kopię, jeśli może się przydać.",
+    "seeWhatIsUsingSpace": "Zobacz, co zajmuje miejsce"
   },
   "weeklyReview": {
     "tasksDone": "Wykonane zadania",

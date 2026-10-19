@@ -25,6 +25,7 @@ export default function useNavigation({
   setInboxArchivedExpanded,
   setDailyNotesModalDate,
   calendarRef,
+  closePlanner = () => {},
 }) {
   const changeDate = useCallback((direction) => {
     // MONTH: the chrome's arrows page whole months, keeping the day of the
@@ -81,6 +82,9 @@ export default function useNavigation({
 
   const handleSpotlightSelect = useCallback((result) => {
     setShowSpotlight(false);
+    // Every result navigates the calendar or the inbox. Searching from inside
+    // the Project Planner (#2131) would otherwise land behind its overlay.
+    closePlanner();
     const { task, source } = result;
 
     const scrollAndHighlight = (selector, delay = 300) => {
@@ -139,7 +143,7 @@ export default function useNavigation({
       goToDate(result.date);
       setDailyNotesModalDate?.(result.date);
     }
-  }, [setShowSpotlight, isMobile, setMobileActiveTab, setTabletActiveTab, setInboxProjectFilter, setInboxArchivedExpanded, setDailyNotesModalDate, calendarRef, goToDate]);
+  }, [setShowSpotlight, isMobile, setMobileActiveTab, setTabletActiveTab, setInboxProjectFilter, setInboxArchivedExpanded, setDailyNotesModalDate, calendarRef, goToDate, closePlanner]);
 
   return { changeDate, goToToday, goToDate, handleSpotlightSelect };
 }

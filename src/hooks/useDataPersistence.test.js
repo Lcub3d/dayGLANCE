@@ -445,3 +445,246 @@ describe('saveData records where a slipped task landed', () => {
     expect(props.setTasks).not.toHaveBeenCalled();
   });
 });
+
+// ── #2138: an unreadable bucket is not an empty one ─────────────────────────
+// A throw anywhere in loadData used to be read as "no data": state stayed
+// empty, dataLoaded went true, and the next save wrote the empty state over
+// every bucket the load had not reached. Each bucket now loads on its own, and
+// one that cannot be read is protected from the save pass until it is
+// repaired or discarded (utils/loadFailures.js).
+describe('loadData isolates an unreadable bucket (#2138)', () => {
+  let store;
+  let setItem;
+  const saveProps = (over = {}) => ({
+    ...makeProps().props,
+    tasks: [], unscheduledTasks: [], recycleBin: [], recurringTasks: [], todayRoutines: [],
+    darkMode: false, syncUrl: '', taskCalendarUrl: '', syncRetentionDays: 0,
+    completedTaskUids: new Set(), routineDefinitions: {}, routinesDate: '',
+    removedTodayRoutineIds: {}, habits: [], habitLogs: {}, habitsEnabled: false,
+    routinesEnabled: false, gtdFrames: [], goals: [], projects: [], areas: [],
+    goalsProjectsEnabled: false, unscheduledOrderTimestamp: null,
+    ...over,
+  });
+  const writtenKeys = () => setItem.mock.calls.map(([key]) => key);
+  const quota = () => Object.assign(new Error('quota'), { name: 'QuotaExceededError' });
+
+  beforeEach(() => {
+    store = {
+      ...STORE,
+      'day-planner-habit-logs': JSON.stringify({ h1: { '2026-10-18': 3 } }),
+      'day-planner-goals': JSON.stringify([{ id: 'g1', title: 'Goal' }]),
+      'day-planner-daily-notes': JSON.stringify({ '2026-10-18': { content: 'note' } }),
+    };
+    setItem = vi.fn((key, value) => { store[key] = value; });
+    globalThis.localStorage = {
+      getItem: vi.fn((k) => store[k] ?? null),
+      setItem,
+      removeItem: vi.fn(),
+    };
+  });
+  afterEach(() => { delete globalThis.localStorage; delete globalThis.window; });
+
+  const load = async () => {
+    // Not named use*: this calls the hook as a plain function, like the tests above.
+    const persistence = await loadHookAs('main');
+    const failures = await import('../utils/loadFailures.js');
+    const { props, setters } = makeProps();
+    persistence(props).loadData();
+    return { persistence, failures, setters };
+  };
+
+  it('a quota error on the normalization write-back no longer aborts the load', async () => {
+    setItem.mockImplementation((key) => { if (key === 'day-planner-tasks') throw quota(); });
+    const { failures, setters } = await load();
+
+    expect(setters.setTasks.mock.calls[0][0]([])).toMatchObject([{ id: 't1' }]);
+    expect(setters.setUnscheduledTasks).toHaveBeenCalledWith([expect.objectContaining({ id: 'u1' })]);
+    expect(setters.setHabits).toHaveBeenCalled();
+    expect(setters.setGoals).toHaveBeenCalledWith([{ id: 'g1', title: 'Goal' }]);
+    expect(setters.setDailyNotes).toHaveBeenCalled();
+    expect(setters.setDataLoaded).toHaveBeenCalledWith(true);
+    // The data was readable; nothing is protected.
+    expect(failures.getLoadFailures()).toEqual([]);
+  });
+
+  it('a corrupt bucket does not stop the ones after it, and is not saved over', async () => {
+    store['day-planner-habits'] = '{not json';
+    const { persistence, failures, setters } = await load();
+
+    expect(setters.setTasks).toHaveBeenCalled();
+    expect(setters.setHabits).not.toHaveBeenCalled();
+    expect(setters.setHabitLogs).toHaveBeenCalled();
+    expect(setters.setGoals).toHaveBeenCalled();
+    expect(failures.getLoadFailures().map(f => f.key)).toEqual(['day-planner-habits']);
+
+    setItem.mockClear();
+    persistence(saveProps()).saveData();
+    expect(writtenKeys()).not.toContain('day-planner-habits');
+    expect(writtenKeys()).toContain('day-planner-tasks');
+    expect(store['day-planner-habits']).toBe('{not json');
+  });
+
+  it('corrupt tasks leave task state alone and the stored copy untouched', async () => {
+    store['day-planner-tasks'] = '[{"id":"t1",';
+    const { persistence, setters } = await load();
+
+    expect(setters.setTasks).not.toHaveBeenCalled();
+    expect(setters.setUnscheduledTasks).toHaveBeenCalled();
+    expect(setters.setDataLoaded).toHaveBeenCalledWith(true);
+
+    persistence(saveProps()).saveData();
+    expect(store['day-planner-tasks']).toBe('[{"id":"t1",');
+  });
+
+  it('the protection lifts once valid data replaces the unreadable value', async () => {
+    store['day-planner-tasks'] = '[{"id":"t1",';
+    const { persistence, failures } = await load();
+
+    // A sync apply or a restore writes storage and state together.
+    store['day-planner-tasks'] = JSON.stringify([{ id: 't9', lastModified: '2026-10-18T00:00:00Z' }]);
+    persistence(saveProps({ tasks: [{ id: 't9', lastModified: '2026-10-18T00:00:00Z' }] })).saveData();
+
+    expect(failures.getLoadFailures()).toEqual([]);
+    expect(JSON.parse(store['day-planner-tasks'])).toMatchObject([{ id: 't9' }]);
+  });
+
+  it('discarding releases the bucket to the save pass', async () => {
+    store['day-planner-habits'] = '{not json';
+    const { persistence, failures } = await load();
+
+    failures.discardLoadFailures();
+    persistence(saveProps()).saveData();
+    expect(store['day-planner-habits']).toBe('[]');
+  });
+
+  it('an absent key is no data, not a failure', async () => {
+    delete store['day-planner-goals'];
+    const { failures, setters } = await load();
+    expect(setters.setGoals).not.toHaveBeenCalled();
+    expect(failures.getLoadFailures()).toEqual([]);
+  });
+});
+
+// ── #2139: a full store is recorded, not just toasted once ──────────────────
+describe('saveData at quota', () => {
+  afterEach(() => { delete globalThis.localStorage; delete globalThis.window; vi.restoreAllMocks(); });
+
+  it('records the rejected key for the persistent banner and still writes the rest', async () => {
+    const written = {};
+    globalThis.localStorage = {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn((k, v) => {
+        if (k === 'day-planner-habit-logs') throw Object.assign(new Error('quota'), { name: 'QuotaExceededError' });
+        written[k] = v;
+      }),
+      removeItem: vi.fn(),
+    };
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const persistence = await loadHookAs('main');
+    const { getWriteFailures } = await import('../utils/storageWrites.js');
+    const { props } = makeProps();
+    const save = persistence({
+      ...props,
+      tasks: [], unscheduledTasks: [], recycleBin: [], recurringTasks: [], todayRoutines: [],
+      darkMode: false, syncUrl: '', taskCalendarUrl: '', syncRetentionDays: 0,
+      completedTaskUids: new Set(), routineDefinitions: {}, routinesDate: '',
+      removedTodayRoutineIds: {}, habits: [], habitLogs: {}, habitsEnabled: false,
+      routinesEnabled: false, gtdFrames: [], goals: [], projects: [], areas: [],
+      goalsProjectsEnabled: false, unscheduledOrderTimestamp: null,
+      t: (k) => k,
+    }).saveData;
+
+    expect(save).not.toThrow();
+    expect(getWriteFailures()).toEqual(['day-planner-habit-logs']);
+    expect(props.setUndoToast).toHaveBeenCalledTimes(1);
+    expect(written).toHaveProperty('day-planner-goals');
+  });
+});
+
+// ── #2140: one edit writes the buckets it changed, not all of them ──────────
+describe('saveData writes only the buckets that changed', () => {
+  let store;
+  let setItem;
+  const base = () => ({
+    ...makeProps().props,
+    tasks: [{ id: 't1', title: 'Task', date: '2026-10-19', lastModified: '2026-10-18T00:00:00.000Z' }],
+    unscheduledTasks: [], recycleBin: [], recurringTasks: [], todayRoutines: [],
+    darkMode: false, syncUrl: '', taskCalendarUrl: '', syncRetentionDays: 0,
+    completedTaskUids: new Set(), routineDefinitions: {}, routinesDate: '2026-10-19',
+    removedTodayRoutineIds: {}, habits: [], habitLogs: {}, habitsEnabled: false,
+    routinesEnabled: false, gtdFrames: [], goals: [], projects: [], areas: [],
+    goalsProjectsEnabled: false, unscheduledOrderTimestamp: null,
+    t: (k) => k,
+  });
+  const BOOKKEEPING = ['day-planner-cloud-sync-local-modified', 'day-planner-local-edit-at'];
+  const dataWrites = () => setItem.mock.calls.map(([k]) => k).filter(k => !BOOKKEEPING.includes(k));
+
+  beforeEach(() => {
+    store = {};
+    setItem = vi.fn((k, v) => { store[k] = v; });
+    globalThis.localStorage = { getItem: vi.fn((k) => store[k] ?? null), setItem, removeItem: vi.fn() };
+  });
+  afterEach(() => { delete globalThis.localStorage; delete globalThis.window; vi.restoreAllMocks(); });
+
+  it('a pass with nothing changed writes no data bucket', async () => {
+    const persistence = await loadHookAs('main');
+    const props = base();
+    persistence(props).saveData();
+    expect(dataWrites().length).toBeGreaterThan(20);
+
+    setItem.mockClear();
+    persistence(props).saveData();
+    expect(dataWrites()).toEqual([]);
+  });
+
+  it('changing one slice writes that bucket alone', async () => {
+    const persistence = await loadHookAs('main');
+    const props = base();
+    persistence(props).saveData();
+
+    setItem.mockClear();
+    persistence({ ...props, habits: [{ id: 'h1', name: 'Water' }] }).saveData();
+    expect(dataWrites()).toEqual(['day-planner-habits']);
+  });
+
+  it('a completed task rewrites tasks, stamped, and nothing else', async () => {
+    const persistence = await loadHookAs('main');
+    const props = base();
+    persistence(props).saveData();
+
+    setItem.mockClear();
+    persistence({ ...props, tasks: [{ ...props.tasks[0], completed: true }] }).saveData();
+    expect(dataWrites()).toEqual(['day-planner-tasks']);
+    expect(JSON.parse(store['day-planner-tasks'])[0].lastModified).not.toBe('2026-10-18T00:00:00.000Z');
+  });
+
+  it('a key changed behind the pass is rewritten from state, as before', async () => {
+    const persistence = await loadHookAs('main');
+    const props = base();
+    persistence(props).saveData();
+
+    store['day-planner-goals'] = JSON.stringify([{ id: 'stray' }]);
+    setItem.mockClear();
+    persistence(props).saveData();
+    expect(dataWrites()).toEqual(['day-planner-goals']);
+    expect(store['day-planner-goals']).toBe('[]');
+  });
+
+  it('a write that failed is tried again on the next pass', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const persistence = await loadHookAs('main');
+    const props = base();
+    let full = true;
+    setItem.mockImplementation((k, v) => {
+      if (full && k === 'day-planner-habit-logs') throw Object.assign(new Error('quota'), { name: 'QuotaExceededError' });
+      store[k] = v;
+    });
+    persistence(props).saveData();
+    expect(store).not.toHaveProperty('day-planner-habit-logs');
+
+    full = false;
+    setItem.mockClear();
+    persistence(props).saveData();
+    expect(dataWrites()).toEqual(['day-planner-habit-logs']);
+  });
+});

@@ -24,6 +24,23 @@ const isSubscriptionImport = (t) =>
 // still reads and normalizes for its own render, it just never persists.
 import { isTrayMode } from '../utils/trayMode.js';
 import { repairLoadedGhostRows } from '../utils/obsidianGhostRows.js';
+import { recordLoadFailure, isLoadProtected } from '../utils/loadFailures.js';
+import { writeItem, getWriteFailures } from '../utils/storageWrites.js';
+
+// What the save pass last wrote, per key (#2140). Every change used to
+// re-serialize every bucket, re-parse and re-stamp all five task-shaped arrays
+// and rewrite ~25 keys, so one checkbox cost time in proportion to the whole
+// dataset. A bucket is now skipped when BOTH hold:
+//   - its inputs are the same values as last pass (state slices are replaced,
+//     never mutated, so identity is change), and
+//   - storage still holds exactly the string this pass wrote there.
+// The second check is what keeps this safe: an apply, a restore or any other
+// writer that changes a key behind the pass's back makes it mismatch, and the
+// bucket is rebuilt and written exactly as before. Given the same inputs and
+// the same stored copy, rebuilding would produce the same string, so a skip
+// never changes what is stored.
+const lastWritten = new Map(); // storage key -> { inputs: any[], value: string }
+const sameInputs = (a, b) => a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
 
 export default function useDataPersistence({
   // setters for loadData
@@ -68,81 +85,132 @@ export default function useDataPersistence({
     return stampTimestamps(currentTasks, prev, new Date().toISOString(), onRestamp);
   };
 
+  // Every bucket is read on its own (#2138). A key that is absent is "no data";
+  // a key that is present but unreadable is recorded in utils/loadFailures.js,
+  // which keeps the save pass from writing empty state over it. One bad key no
+  // longer takes the keys after it down with it.
+  //
+  // `bucket` runs one section and records its keys on a throw. `writeBack` is
+  // the normalization write-back: best-effort, because the normalized copy is
+  // slightly larger than the stored one and a store at its quota rejects it.
+  // Losing the write-back costs nothing — stampTimestamps' normalizeField treats
+  // the defaults it adds as equal to their absence — whereas letting it throw
+  // used to abort the whole load.
   const loadData = () => {
-    try {
-      const tasksData = localStorage.getItem('day-planner-tasks');
-      const unscheduledData = localStorage.getItem('day-planner-unscheduled');
+    const bucket = (keys, run) => {
+      try {
+        run();
+      } catch (error) {
+        for (const key of keys) {
+          let raw;
+          try { raw = localStorage.getItem(key); } catch { raw = undefined; }
+          // Only a key that holds something can be unreadable; an absent key
+          // that a section tripped over is still absent, and saving it is safe.
+          if (raw !== null) recordLoadFailure(key, error, raw);
+        }
+      }
+    };
+    const writeBack = (key, value) => {
+      if (isTrayMode) return;
+      try {
+        localStorage.setItem(key, value);
+      } catch (error) {
+        console.warn(`[load] normalization write-back skipped for ${key}:`, error);
+      }
+    };
+    const parseTaskList = (key) => {
+      const raw = localStorage.getItem(key);
+      if (!raw) return [];
+      return JSON.parse(raw).map(t => ({
+        ...t,
+        notes: t.notes ?? '',
+        subtasks: t.subtasks ?? []
+      }));
+    };
+
+    // Parse existing data and normalize defaults so localStorage and React
+    // state stay in sync.  Without this write-back, stampTaskTimestamps detects
+    // the added defaults as "changes" and re-stamps lastModified on every task
+    // at app load, making stale local tasks win during the initial cloud merge.
+    // `null` means the list could not be read: its state is left alone.
+    let parsedTasks = null;
+    bucket(['day-planner-tasks'], () => {
+      parsedTasks = parseTaskList('day-planner-tasks');
+      if (localStorage.getItem('day-planner-tasks')) writeBack('day-planner-tasks', JSON.stringify(parsedTasks));
+    });
+    let parsedUnscheduled = null;
+    bucket(['day-planner-unscheduled'], () => {
+      parsedUnscheduled = parseTaskList('day-planner-unscheduled');
+      if (localStorage.getItem('day-planner-unscheduled')) writeBack('day-planner-unscheduled', JSON.stringify(parsedUnscheduled));
+    });
+
+    // Load tasks normally; preserve any _native events already queued by Effect B
+    // if it raced ahead of loadData in React's state update batch. On native-
+    // calendar devices, drop any persisted subscription imports so they don't
+    // linger as stale duplicates of the live EventKit/bridge events.
+    const loadedTasks = parsedTasks && hasNativeCalendar() ? parsedTasks.filter(t => !isSubscriptionImport(t)) : parsedTasks;
+    const loadedUnscheduled = parsedUnscheduled ? parsedUnscheduled.filter(t => !t.imported) : null;
+    // Ghost-row self-repair at boot (utils/obsidianGhostRows.js): if this
+    // device minted mangled duplicates while running a pre-block-id build,
+    // its first launch after updating contains them here — the sync
+    // ingresses only fire when something syncs, and a local-only install
+    // would otherwise never repair. The tray never persists (read snapshot).
+    // The repair only runs when both lists were read; it is a repair, so
+    // failing it falls back to the lists as stored rather than to nothing.
+    let ghostRepaired = { tasks: loadedTasks, unscheduledTasks: loadedUnscheduled };
+    if (loadedTasks && loadedUnscheduled) {
+      try {
+        ghostRepaired = repairLoadedGhostRows(loadedTasks, loadedUnscheduled, { persist: !isTrayMode });
+      } catch (error) {
+        console.error('[load] ghost-row repair skipped:', error);
+      }
+    }
+    if (ghostRepaired.tasks) setTasks(prev => [...ghostRepaired.tasks, ...prev.filter(t => t._native)]);
+    if (ghostRepaired.unscheduledTasks) setUnscheduledTasks(ghostRepaired.unscheduledTasks);
+
+    bucket(['day-planner-recycle-bin'], () => {
       const recycleBinData = localStorage.getItem('day-planner-recycle-bin');
+      if (recycleBinData) setRecycleBin(JSON.parse(recycleBinData));
+    });
+
+    // The theme is not reloaded here: App reads its preference at start
+    // (utils/themePref.js), and setting it from the resolved value would
+    // turn a 'system' preference into an explicit one on every load.
+    bucket(['day-planner-sync-url'], () => {
       const syncUrlData = localStorage.getItem('day-planner-sync-url');
+      // Migrate from JSON-stringified format (e.g. "\"https://...\"") to plain string
+      if (syncUrlData) setSyncUrl(syncUrlData.startsWith('"') ? JSON.parse(syncUrlData) : syncUrlData);
+    });
+    bucket(['day-planner-task-calendar-url'], () => {
       const taskCalendarUrlData = localStorage.getItem('day-planner-task-calendar-url');
-      const completedTaskUidsData = localStorage.getItem('day-planner-task-completed-uids');
-      const recurringTasksData = localStorage.getItem('day-planner-recurring-tasks');
-      const dailyNotesData = localStorage.getItem('day-planner-daily-notes');
-
-      // Parse existing data and normalize defaults so localStorage and React
-      // state stay in sync.  Without this write-back, stampTaskTimestamps detects
-      // the added defaults as "changes" and re-stamps lastModified on every task
-      // at app load, making stale local tasks win during the initial cloud merge.
-      const parsedTasks = tasksData ? JSON.parse(tasksData).map(t => ({
-        ...t,
-        notes: t.notes ?? '',
-        subtasks: t.subtasks ?? []
-      })) : [];
-      if (tasksData && !isTrayMode) localStorage.setItem('day-planner-tasks', JSON.stringify(parsedTasks));
-
-      const parsedUnscheduled = unscheduledData ? JSON.parse(unscheduledData).map(t => ({
-        ...t,
-        notes: t.notes ?? '',
-        subtasks: t.subtasks ?? []
-      })) : [];
-      if (unscheduledData && !isTrayMode) localStorage.setItem('day-planner-unscheduled', JSON.stringify(parsedUnscheduled));
-
-      // Load tasks normally; preserve any _native events already queued by Effect B
-      // if it raced ahead of loadData in React's state update batch. On native-
-      // calendar devices, drop any persisted subscription imports so they don't
-      // linger as stale duplicates of the live EventKit/bridge events.
-      const loadedTasks = hasNativeCalendar() ? parsedTasks.filter(t => !isSubscriptionImport(t)) : parsedTasks;
-      // Ghost-row self-repair at boot (utils/obsidianGhostRows.js): if this
-      // device minted mangled duplicates while running a pre-block-id build,
-      // its first launch after updating contains them here — the sync
-      // ingresses only fire when something syncs, and a local-only install
-      // would otherwise never repair. The tray never persists (read snapshot).
-      const ghostRepaired = repairLoadedGhostRows(
-        loadedTasks, parsedUnscheduled.filter(t => !t.imported), { persist: !isTrayMode },
-      );
-      setTasks(prev => [...ghostRepaired.tasks, ...prev.filter(t => t._native)]);
-      setUnscheduledTasks(ghostRepaired.unscheduledTasks);
-      if (recycleBinData) {
-        setRecycleBin(JSON.parse(recycleBinData));
-      }
-
-      // The theme is not reloaded here: App reads its preference at start
-      // (utils/themePref.js), and setting it from the resolved value would
-      // turn a 'system' preference into an explicit one on every load.
-      if (syncUrlData) {
-        // Migrate from JSON-stringified format (e.g. "\"https://...\"") to plain string
-        setSyncUrl(syncUrlData.startsWith('"') ? JSON.parse(syncUrlData) : syncUrlData);
-      }
       if (taskCalendarUrlData) {
         setTaskCalendarUrl(taskCalendarUrlData.startsWith('"') ? JSON.parse(taskCalendarUrlData) : taskCalendarUrlData);
       }
-      if (completedTaskUidsData) {
-        setCompletedTaskUids(new Set(JSON.parse(completedTaskUidsData)));
-      }
-      if (dailyNotesData) {
-        try { setDailyNotes(JSON.parse(dailyNotesData)); } catch {}
-      }
-      if (recurringTasksData) {
-        setRecurringTasks(JSON.parse(recurringTasksData));
-      }
+    });
+    bucket(['day-planner-task-completed-uids'], () => {
+      const completedTaskUidsData = localStorage.getItem('day-planner-task-completed-uids');
+      if (completedTaskUidsData) setCompletedTaskUids(new Set(JSON.parse(completedTaskUidsData)));
+    });
+    // App's useState initializer has already read the notes (and recorded a
+    // failure there if they were unreadable); this re-read keeps a reload of
+    // loadData in step with storage.
+    bucket(['day-planner-daily-notes'], () => {
+      const dailyNotesData = localStorage.getItem('day-planner-daily-notes');
+      if (dailyNotesData) setDailyNotes(JSON.parse(dailyNotesData));
+    });
+    bucket(['day-planner-recurring-tasks'], () => {
+      const recurringTasksData = localStorage.getItem('day-planner-recurring-tasks');
+      if (recurringTasksData) setRecurringTasks(JSON.parse(recurringTasksData));
+    });
 
-      // Load routines
+    // Load routines
+    bucket(['day-planner-routine-definitions'], () => {
       const routineDefsData = localStorage.getItem('day-planner-routine-definitions');
+      if (routineDefsData) setRoutineDefinitions(JSON.parse(routineDefsData));
+    });
+    bucket(['day-planner-today-routines', 'day-planner-removed-today-routine-ids'], () => {
       const todayRoutinesData = localStorage.getItem('day-planner-today-routines');
       const routinesDateData = localStorage.getItem('day-planner-routines-date');
-      if (routineDefsData) {
-        setRoutineDefinitions(JSON.parse(routineDefsData));
-      }
       const todayStr = dateToString(new Date());
       if (routinesDateData && routinesDateData === todayStr && todayRoutinesData) {
         setTodayRoutines(JSON.parse(todayRoutinesData));
@@ -169,41 +237,59 @@ export default function useDataPersistence({
         setTodayRoutines([]);
         setRoutinesDate(todayStr);
         setRemovedTodayRoutineIds(rolled);
-        if (!isTrayMode) localStorage.setItem('day-planner-removed-today-routine-ids', JSON.stringify(rolled));
+        writeBack('day-planner-removed-today-routine-ids', JSON.stringify(rolled));
       }
+    });
 
-      // Load habit tracking data
+    // Load habit tracking data
+    bucket(['day-planner-habits'], () => {
       const habitsData = localStorage.getItem('day-planner-habits');
       if (habitsData) {
         const parsedHabits = JSON.parse(habitsData).map(h =>
           h.scheduledDays ? h : { ...h, scheduledDays: [0, 1, 2, 3, 4, 5, 6] }
         );
-        if (!isTrayMode) localStorage.setItem('day-planner-habits', JSON.stringify(parsedHabits));
+        writeBack('day-planner-habits', JSON.stringify(parsedHabits));
         setHabits(parsedHabits);
       }
+    });
+    bucket(['day-planner-habit-logs'], () => {
       const habitLogsData = localStorage.getItem('day-planner-habit-logs');
       if (habitLogsData) setHabitLogs(JSON.parse(habitLogsData));
+    });
+    bucket(['day-planner-habits-enabled'], () => {
       const habitsEnabledData = localStorage.getItem('day-planner-habits-enabled');
       if (habitsEnabledData !== null) setHabitsEnabled(JSON.parse(habitsEnabledData));
+    });
+    bucket(['day-planner-routines-enabled'], () => {
       const routinesEnabledData = localStorage.getItem('day-planner-routines-enabled');
       if (routinesEnabledData !== null) setRoutinesEnabled(JSON.parse(routinesEnabledData));
+    });
 
-      // Load unscheduled task order timestamp
+    // Load unscheduled task order timestamp
+    bucket(['day-planner-unscheduled-order-ts'], () => {
       const orderTsData = localStorage.getItem('day-planner-unscheduled-order-ts');
       if (orderTsData) setUnscheduledOrderTimestamp(orderTsData);
+    });
 
-      // Load goals and projects
+    // Load goals and projects
+    bucket(['day-planner-goals'], () => {
       const goalsData = localStorage.getItem('day-planner-goals');
       if (goalsData) setGoals(JSON.parse(goalsData));
+    });
+    bucket(['day-planner-projects'], () => {
       const projectsData = localStorage.getItem('day-planner-projects');
       if (projectsData) setProjects(JSON.parse(projectsData));
+    });
+    bucket(['day-planner-areas'], () => {
       const areasData = localStorage.getItem('day-planner-areas');
       if (areasData) setAreas(JSON.parse(areasData));
+    });
+    bucket(['day-planner-goals-projects-enabled'], () => {
       const goalsProjectsEnabledData = localStorage.getItem('day-planner-goals-projects-enabled');
       if (goalsProjectsEnabledData !== null) setGoalsProjectsEnabled(JSON.parse(goalsProjectsEnabledData));
-    } catch (error) {
-      console.log('No existing data found, starting fresh');
-    }
+    });
+    // Loaded, though not necessarily in full: whatever could not be read is
+    // protected (utils/loadFailures.js) and the banner says so.
     setDataLoaded(true);
   };
 
@@ -211,16 +297,37 @@ export default function useDataPersistence({
     // Write each key individually so a QuotaExceededError on one key does not
     // leave earlier keys updated and later keys stale (partial-write corruption).
     let quotaHit = false;
-    const safeSet = (key, value) => {
-      try {
-        localStorage.setItem(key, value);
-      } catch (e) {
-        console.error('Error saving data:', key, e);
-        if (!quotaHit && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+    const safeSet = (key, value, inputs = null) => {
+      // A bucket that failed to load holds data this state never saw; writing
+      // state over it is how one corrupt key used to wipe a store (#2138).
+      if (isLoadProtected(key)) return;
+      // writeItem records a quota failure for the persistent banner (#2139);
+      // the toast is the immediate notice for the action that hit it. A failed
+      // write is not remembered, so the next pass tries the bucket again.
+      if (writeItem(key, value)) {
+        if (inputs) lastWritten.set(key, { inputs, value });
+        else lastWritten.delete(key);
+      } else {
+        lastWritten.delete(key);
+        if (!quotaHit && getWriteFailures().includes(key)) {
           quotaHit = true;
           setUndoToast({ message: t('backup.storageFull'), kind: 'warning' });
         }
       }
+    };
+    // True when `key` can be skipped this pass (see lastWritten above).
+    const unchanged = (key, inputs) => {
+      const last = lastWritten.get(key);
+      if (!last || !sameInputs(last.inputs, inputs)) return false;
+      let stored;
+      try { stored = localStorage.getItem(key); } catch { return false; }
+      return stored === last.value;
+    };
+    // Write `key` from `build()` unless its inputs and stored copy are as this
+    // pass left them.
+    const saveBucket = (key, inputs, build) => {
+      if (unchanged(key, inputs)) return;
+      safeSet(key, build(), inputs);
     };
 
     // Never persist _native events; on native-calendar devices also drop ephemeral
@@ -244,71 +351,85 @@ export default function useDataPersistence({
     // already carrying a baseline, stampOriginalPlan returns the SAME array, and
     // nothing further happens. suppressTimestampRef covers it as before: while
     // remote data is being applied this device witnessed no scheduling.
-    const prevStoredTasks = readStored('day-planner-tasks');
-    const liveTasks = tasks.filter(t => !t._native && !(hasNativeCalendar() && isSubscriptionImport(t)));
-    //
-    // `deferrals` (utils/deferrals.js) rides the same pass and the same reasoning:
-    // this is the only place that sees the schedule a task HAD next to the one it
-    // has now, which is what tells a slip from a fresh plan. Suppressed during a
-    // remote apply for the same reason as the baseline — a reschedule made on
-    // another device is that device's to count, and counting it again here would
-    // inflate every task on every sync.
-    const plannedTasks = suppressTimestampRef.current
-      ? liveTasks
-      : stampOriginalPlan(liveTasks, prevStoredTasks);
-    const countedTasks = suppressTimestampRef.current
-      ? plannedTasks
-      : stampDeferrals(plannedTasks, prevStoredTasks);
-    // `planTrail` (utils/planTrail.js) records WHERE each of those slips landed,
-    // off the same comparison and under the same suppression. Stamped from
-    // `countedTasks` so a task that gains both in one pass keeps them: reading
-    // `plannedTasks` here would build the trail on a copy without the new count
-    // and then overwrite it.
-    const trailedTasks = suppressTimestampRef.current
-      ? countedTasks
-      : stampPlanTrail(countedTasks, prevStoredTasks);
-    if (plannedTasks !== liveTasks) setTasks(prev => applyBaselines(prev, plannedTasks));
-    if (countedTasks !== plannedTasks) setTasks(prev => applyDeferrals(prev, countedTasks));
-    if (trailedTasks !== countedTasks) setTasks(prev => applyPlanTrail(prev, trailedTasks));
-    const stampedTasks = stampTaskTimestamps(trailedTasks, 'day-planner-tasks', prevStoredTasks);
-    const stampedUnscheduled = stampTaskTimestamps(unscheduledTasks, 'day-planner-unscheduled');
-    const stampedRecycleBin = stampTaskTimestamps(recycleBin, 'day-planner-recycle-bin');
-    const stampedRecurring = stampTaskTimestamps(recurringTasks, 'day-planner-recurring-tasks');
-    const stampedTodayRoutines = stampTaskTimestamps(todayRoutines, 'day-planner-today-routines');
+    // The whole task pipeline (baselines, deferrals, plan trail, stamps) reads
+    // the stored copy and the live list, and is skipped with the bucket when
+    // neither has moved since this pass wrote it (#2140).
+    const taskInputs = [tasks, suppressTimestampRef.current, hasNativeCalendar()];
+    if (!unchanged('day-planner-tasks', taskInputs)) {
+      const prevStoredTasks = readStored('day-planner-tasks');
+      const liveTasks = tasks.filter(t => !t._native && !(hasNativeCalendar() && isSubscriptionImport(t)));
+      //
+      // `deferrals` (utils/deferrals.js) rides the same pass and the same reasoning:
+      // this is the only place that sees the schedule a task HAD next to the one it
+      // has now, which is what tells a slip from a fresh plan. Suppressed during a
+      // remote apply for the same reason as the baseline — a reschedule made on
+      // another device is that device's to count, and counting it again here would
+      // inflate every task on every sync.
+      const plannedTasks = suppressTimestampRef.current
+        ? liveTasks
+        : stampOriginalPlan(liveTasks, prevStoredTasks);
+      const countedTasks = suppressTimestampRef.current
+        ? plannedTasks
+        : stampDeferrals(plannedTasks, prevStoredTasks);
+      // `planTrail` (utils/planTrail.js) records WHERE each of those slips landed,
+      // off the same comparison and under the same suppression. Stamped from
+      // `countedTasks` so a task that gains both in one pass keeps them: reading
+      // `plannedTasks` here would build the trail on a copy without the new count
+      // and then overwrite it.
+      const trailedTasks = suppressTimestampRef.current
+        ? countedTasks
+        : stampPlanTrail(countedTasks, prevStoredTasks);
+      if (plannedTasks !== liveTasks) setTasks(prev => applyBaselines(prev, plannedTasks));
+      if (countedTasks !== plannedTasks) setTasks(prev => applyDeferrals(prev, countedTasks));
+      if (trailedTasks !== countedTasks) setTasks(prev => applyPlanTrail(prev, trailedTasks));
+      const stampedTasks = stampTaskTimestamps(trailedTasks, 'day-planner-tasks', prevStoredTasks);
+      safeSet('day-planner-tasks', JSON.stringify(stampedTasks), taskInputs);
+    }
+
+    // The other task-shaped arrays are stamped against their own stored copy;
+    // the suppress flag is an input because it decides whether they stamp.
+    const suppressed = suppressTimestampRef.current;
+    saveBucket('day-planner-unscheduled', [unscheduledTasks, suppressed],
+      () => JSON.stringify(stampTaskTimestamps(unscheduledTasks, 'day-planner-unscheduled')));
+    saveBucket('day-planner-recycle-bin', [recycleBin, suppressed],
+      () => JSON.stringify(stampTaskTimestamps(recycleBin, 'day-planner-recycle-bin')));
+    saveBucket('day-planner-recurring-tasks', [recurringTasks, suppressed],
+      () => JSON.stringify(stampTaskTimestamps(recurringTasks, 'day-planner-recurring-tasks')));
+    saveBucket('day-planner-today-routines', [todayRoutines, suppressed],
+      () => JSON.stringify(stampTaskTimestamps(todayRoutines, 'day-planner-today-routines')));
 
     // Prune completedTaskUids to the retention window to prevent unbounded growth.
     // UIDs have the format "icalUid::YYYY-MM-DD"; discard entries whose date is
-    // older than syncRetentionDays (same window used for task import).
-    const uidCutoff = syncRetentionDays > 0 ? new Date(Date.now() - syncRetentionDays * 86400000) : null;
-    const prunedUids = [...completedTaskUids].filter(uid => {
-      if (!uidCutoff) return true;
-      const m = uid.match(/::(\d{4}-\d{2}-\d{2})$/);
-      return !m || new Date(m[1]) >= uidCutoff;
+    // older than syncRetentionDays (same window used for task import). The
+    // cutoff moves with the clock, so today's date is one of the inputs.
+    saveBucket('day-planner-task-completed-uids', [completedTaskUids, syncRetentionDays, dateToString(new Date())], () => {
+      const uidCutoff = syncRetentionDays > 0 ? new Date(Date.now() - syncRetentionDays * 86400000) : null;
+      const prunedUids = [...completedTaskUids].filter(uid => {
+        if (!uidCutoff) return true;
+        const m = uid.match(/::(\d{4}-\d{2}-\d{2})$/);
+        return !m || new Date(m[1]) >= uidCutoff;
+      });
+      return JSON.stringify(prunedUids);
     });
 
-    safeSet('day-planner-tasks', JSON.stringify(stampedTasks));
-    safeSet('day-planner-unscheduled', JSON.stringify(stampedUnscheduled));
-    safeSet('day-planner-recycle-bin', JSON.stringify(stampedRecycleBin));
-    safeSet('day-planner-darkmode', JSON.stringify(darkMode));
-    safeSet('day-planner-sync-url', syncUrl);
-    safeSet('day-planner-task-calendar-url', taskCalendarUrl);
-    safeSet('day-planner-sync-retention-days', JSON.stringify(syncRetentionDays));
-    safeSet('day-planner-task-completed-uids', JSON.stringify(prunedUids));
-    safeSet('day-planner-recurring-tasks', JSON.stringify(stampedRecurring));
-    safeSet('day-planner-routine-definitions', JSON.stringify(routineDefinitions));
-    safeSet('day-planner-today-routines', JSON.stringify(stampedTodayRoutines));
-    safeSet('day-planner-routines-date', routinesDate);
-    safeSet('day-planner-removed-today-routine-ids', JSON.stringify(removedTodayRoutineIds));
-    safeSet('day-planner-habits', JSON.stringify(habits));
-    safeSet('day-planner-habit-logs', JSON.stringify(habitLogs));
-    safeSet('day-planner-habits-enabled', JSON.stringify(habitsEnabled));
-    safeSet('day-planner-routines-enabled', JSON.stringify(routinesEnabled));
-    safeSet('day-planner-gtd-frames', JSON.stringify(gtdFrames));
-    safeSet('day-planner-goals', JSON.stringify(goals));
-    safeSet('day-planner-projects', JSON.stringify(projects));
-    safeSet('day-planner-areas', JSON.stringify(areas));
-    safeSet('day-planner-goals-projects-enabled', JSON.stringify(goalsProjectsEnabled));
-    if (unscheduledOrderTimestamp) safeSet('day-planner-unscheduled-order-ts', unscheduledOrderTimestamp);
+    const json = (value) => () => JSON.stringify(value);
+    saveBucket('day-planner-darkmode', [darkMode], json(darkMode));
+    saveBucket('day-planner-sync-url', [syncUrl], () => syncUrl);
+    saveBucket('day-planner-task-calendar-url', [taskCalendarUrl], () => taskCalendarUrl);
+    saveBucket('day-planner-sync-retention-days', [syncRetentionDays], json(syncRetentionDays));
+    saveBucket('day-planner-routine-definitions', [routineDefinitions], json(routineDefinitions));
+    saveBucket('day-planner-routines-date', [routinesDate], () => routinesDate);
+    saveBucket('day-planner-removed-today-routine-ids', [removedTodayRoutineIds], json(removedTodayRoutineIds));
+    saveBucket('day-planner-habits', [habits], json(habits));
+    saveBucket('day-planner-habit-logs', [habitLogs], json(habitLogs));
+    saveBucket('day-planner-habits-enabled', [habitsEnabled], json(habitsEnabled));
+    saveBucket('day-planner-routines-enabled', [routinesEnabled], json(routinesEnabled));
+    saveBucket('day-planner-gtd-frames', [gtdFrames], json(gtdFrames));
+    saveBucket('day-planner-goals', [goals], json(goals));
+    saveBucket('day-planner-projects', [projects], json(projects));
+    saveBucket('day-planner-areas', [areas], json(areas));
+    saveBucket('day-planner-goals-projects-enabled', [goalsProjectsEnabled], json(goalsProjectsEnabled));
+    if (unscheduledOrderTimestamp) saveBucket('day-planner-unscheduled-order-ts', [unscheduledOrderTimestamp], () => unscheduledOrderTimestamp);
     // Only update local-modified after initial cloud sync has run,
     // otherwise the initial loadData() sets it to "now" and overwrites remote
     if (!cloudSyncConfig?.enabled || cloudSyncInitialDoneRef.current) {

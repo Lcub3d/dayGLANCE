@@ -706,7 +706,9 @@
     "beta": "Beta",
     "calDAVSyncHint": "For syncing completions back: the CalDAV collection URL (without ?export). In Nextcloud, the calendar ID in the URL may differ from the display name.",
     "deviceCalendarDescription": "Calendar events are read from your device accounts. Use the Device Calendars section below to choose which calendars to show.",
-    "deviceCalendarFilterHint": "Uncheck to hide calendars. Leave all checked to show everything.",
+    "deviceCalendarFilterHint": "Uncheck a calendar to hide its events. Uncheck all to hide every device calendar.",
+    "deviceCalendarsShowAll": "Show all",
+    "deviceCalendarsHideAll": "Hide all",
     "glanceEncryptEvents": "Encrypt intent events",
     "glanceEncryptionEnabledHint": "Uses your cloud sync passphrase. Set up once; remains active across sessions.",
     "glanceEncryptionRequiredHint": "Requires cloud sync encryption to be enabled first.",
@@ -1366,7 +1368,13 @@
     "importedCalendarEvents": "Imported calendar events",
     "title": "Storage Breakdown",
     "todoistReceipts": "Todoist pending operations",
-    "total": "Local storage: {{used}} / ~5 MB ({{percent}}%)"
+    "total": "Local storage: {{used}} / ~5 MB ({{percent}}%)",
+    "loadFailedTitle": "Some saved data couldn't be read.",
+    "loadFailedBody": "dayGLANCE won't save over it, so changes to that data aren't being saved. Download a copy, restore a backup, or discard it.",
+    "loadFailedDownload": "Download a copy",
+    "loadFailedDiscard": "Discard",
+    "loadFailedDiscardConfirm": "Discard the unreadable data? Your current data will be saved over it, and this can't be undone. Download a copy first if you might need it.",
+    "seeWhatIsUsingSpace": "See what's using space"
   },
   "weeklyReview": {
     "tasksDone": "Tasks done",

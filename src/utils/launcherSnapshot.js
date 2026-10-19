@@ -68,6 +68,9 @@ const keep = (t, isVisibleForUser) => t && !t.archived && !t.isExample && isVisi
  * @param {Function} input.frameInstancesForDate  (Date) → frame instances (utils/frameInstances.js)
  * @param {Function} input.getDayWindow    (dateStr) → { start, stop } as 'HH:MM' | null, or null
  * @param {?{lat:number, lon:number}} input.weatherCoords
+ * @param {?object} input.weatherHourlyByDate  useWeather's hourlyByDate: { 'YYYY-MM-DD': { hour: {temp, code, uv} } }
+ * @param {string} [input.weatherTempUnit]  'fahrenheit' | 'celsius', the unit the temps are in
+ * @param {?{on:boolean, fromMin:number}} [input.dialAlarm]  the dial's alarm-mark prefs (utils/dialPrefs.js)
  * @param {boolean} input.use24Hour
  * @param {string} input.timezone
  * @param {number} input.updatedAt         the push's own stamp (excluded from the fingerprint)
@@ -80,7 +83,8 @@ export function buildLauncherSnapshot({
   projects = [], goals = [], goalsProjectsEnabled = false, isVisibleForUser = () => true,
   todayRoutines = [], routineCompletions = {}, routinesEnabled = true,
   frameInstancesForDate = () => [], getDayWindow = () => null,
-  weatherCoords = null, use24Hour = false, timezone, updatedAt,
+  weatherCoords = null, weatherHourlyByDate = null, weatherTempUnit = 'fahrenheit', dialAlarm = null,
+  use24Hour = false, timezone, updatedAt,
   handledWrites = [],
   sunTimes = getSunTimes,
 }) {
@@ -138,13 +142,39 @@ export function buildLauncherSnapshot({
   const sun = weatherCoords && Number.isFinite(weatherCoords.lat) && Number.isFinite(weatherCoords.lon)
     ? sunTimes(now, weatherCoords.lat, weatherCoords.lon)
     : null;
+  const hasCoords = !!sun;
   const dayShape = {
     dayStartMin: timeToMinutes(window.start),
     dayStopMin: timeToMinutes(window.stop),
     sunriseMin: sun?.sunriseMin ?? null,
     sunsetMin: sun?.sunsetMin ?? null,
     use24HourClock: !!use24Hour,
+    // The weather location, for the launcher's moon and solar elevation.
+    lat: hasCoords ? weatherCoords.lat : null,
+    lon: hasCoords ? weatherCoords.lon : null,
+    // The dial's alarm-mark prefs, so the launcher shows the mark as the app does.
+    dialAlarm: dialAlarm ? { on: dialAlarm.on !== false, fromMin: Number.isFinite(dialAlarm.fromMin) ? dialAlarm.fromMin : 18 * 60 } : null,
   };
+
+  // Hourly weather per forecast date, as the dial's weather ring reads it: one
+  // row per date, hours in order, temps already in the user's unit. Only dates
+  // the forecast covers exist; the launcher drops the layer for any other.
+  const weatherRows = [];
+  for (const date of Object.keys(weatherHourlyByDate || {}).sort()) {
+    const byHour = weatherHourlyByDate[date] || {};
+    const hours = [];
+    for (let h = 0; h < 24; h++) {
+      const e = byHour[h];
+      if (!e) continue;
+      hours.push({
+        hour: h,
+        temp: Number.isFinite(e.temp) ? e.temp : null,
+        code: Number.isFinite(e.code) ? e.code : null,
+        uv: Number.isFinite(e.uv) ? Math.round(e.uv * 10) / 10 : null,
+      });
+    }
+    if (hours.length) weatherRows.push({ id: date, date, unit: weatherTempUnit === 'celsius' ? 'celsius' : 'fahrenheit', hours });
+  }
 
   return {
     version: LAUNCHER_SNAPSHOT_VERSION,
@@ -157,6 +187,7 @@ export function buildLauncherSnapshot({
     routines: routineRows,
     frames: frameRows,
     dayShape,
+    weather: weatherRows,
     handledWrites: handledWrites.map(h => ({ clientId: h.clientId, taskId: h.taskId ?? null, action: h.action, at: h.at })),
   };
 }

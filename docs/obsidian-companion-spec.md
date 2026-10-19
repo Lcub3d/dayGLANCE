@@ -695,8 +695,9 @@ name from any title; a bounded ` 2`, ` 3` suffix past a taken path; and the
 subset). The plugin's settings section holds the layout, both folders and
 the two template paths (plugin-local, like the scope). A `project_note_create`
 intent from dayGLANCE (the "Create a note in Obsidian" checkbox on a NEW
-project or goal; the fields ride the intent because the entity is not in
-any list yet) creates the note with dayGLANCE's creation frontmatter and a
+project or goal, and since 2026-10-19 the "Create in Obsidian" button on an
+existing unlinked one's note row; the fields ride the intent either way, so
+the plugin needs no list) creates the note with dayGLANCE's creation frontmatter and a
 title heading, renders the template through the ladder (Templater's
 `create_running_config` + `read_and_parse_template` when both feature-detect
 and the template is non-interactive, else the subset), then links it —
@@ -970,6 +971,12 @@ round trip, the same-title suffix, the quiet second pass), the
 - **Direct access** gets the same editor over the file where a link exists (the write replaces the section in a whole-note write). Links on direct access are made by the user, per the next section.
 
 Pure halves in `noteDescription.js` (split, extract, replace, merge, the conflict callout, the hash); pinned by its unit tests, the applier tests in `bridgeStream.test.js`, the hook tests in `useObsidianSync.noteDescription.test.js`, and `projectNotes.scenarios.test.ts` 22 to 24.
+
+#### An existing project or goal can have its note created from the note row (owner, 2026-10-19)
+
+**The gap.** Creation lived only on the new-entity form. A project made before the vault was connected, or before the plugin was paired, had to have its note made by hand in Obsidian and then linked, although the plugin already knew how to create one in the chosen layout.
+
+**Ruling.** The note row of an existing, unlinked project or goal carries a **Create in Obsidian** button that emits the same `project_note_create` intent the checkbox does, with the title, the project's goal and the description read from the record (`noteCreateFields`). Everything downstream is unchanged: the plugin creates by title under its layout and template, links by the target id, and the record learns its locator through the link observation. The description moves into the note's description slot and leaves the record on enqueue, as it does at creation. Plugin only, like the checkbox: without a stream posture the button is disabled and says why. A missing-link entity keeps Relink and Unlink and gets no Create, since a fresh note beside a dangling locator is a second decision.
 
 #### A wikilink in the title is the link, and the record may hold a link alone (owner, 2026-10-03)
 

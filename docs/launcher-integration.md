@@ -25,13 +25,17 @@ same trigger (every data change while the app runs), and pushes through
   projects: [{ id, title, goalId, colorHex, description, status }],
   routines: [{ id, name, startTime, duration, isAllDay, completed }],   // today's
   frames:   [{ id, frameId, date, start, end, name, colorHex }],       // per day, today-7 to today+34
-  dayShape: { dayStartMin, dayStopMin, sunriseMin, sunsetMin, use24HourClock },
+  dayShape: { dayStartMin, dayStopMin, sunriseMin, sunsetMin, use24HourClock,
+              lat, lon,                                  // the weather location, for the moon and solar elevation
+              dialAlarm: { on, fromMin } },              // the dial's alarm-mark prefs
+  weather:  [{ id: date, date, unit: "fahrenheit"|"celsius",
+               hours: [{ hour, temp, code, uv }] }],      // one row per forecast date, as the dial's ring reads it
   handledWrites: [{ clientId, taskId, action, at }] }
 ```
 
 `LauncherProvider` (`dayglance-android/.../launcher/`) serves it read-only at
 `content://com.dayglance.app.launcher/<collection>` for `tasks`, `goals`,
-`projects`, `routines`, `frames`, `dayShape` (one row) and `meta` (one row:
+`projects`, `routines`, `frames`, `weather`, `dayShape` (one row) and `meta` (one row:
 version, updatedAt, timezone, today, handledWrites). Each cursor has `_id`,
 `id` and `json` columns, the row as JSON. Every push calls `notifyChange` on
 the authority, so a `ContentObserver` registered on any collection URI sees

@@ -7425,6 +7425,9 @@ const DayPlanner = () => {
       todayRoutines, routineCompletions, routinesEnabled,
       frameInstancesForDate: getFrameInstancesForDate, getDayWindow,
       weatherCoords: getStoredWeatherCoords(),
+      weatherHourlyByDate: weather?.hourlyByDate ?? null,
+      weatherTempUnit,
+      dialAlarm: loadAlarmPrefs(),
       use24Hour: use24HourClock,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       updatedAt: Date.now(),
@@ -7442,7 +7445,7 @@ const DayPlanner = () => {
   }, [
     dataLoaded, isResizing, tasks, unscheduledTasks, expandedRecurringTasks,
     projects, goals, goalsProjectsEnabled, isVisibleForUser,
-    todayRoutines, routineCompletions, routinesEnabled,
+    todayRoutines, routineCompletions, routinesEnabled, weather, weatherTempUnit,
     getFrameInstancesForDate, getDayWindow, use24HourClock, currentTime,
   ]);
 

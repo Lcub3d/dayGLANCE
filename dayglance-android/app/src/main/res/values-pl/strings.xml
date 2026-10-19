@@ -220,4 +220,6 @@
     <string name="day_dial_legend_sleep">Sen</string>
     <string name="day_dial_unblocked">Wolny czas</string>
     <string name="day_dial_routines">Rutyny</string>
+    <string name="launcher_permission_label">Odczyt danych dayGLANCE dla GLANCElauncher</string>
+    <string name="launcher_permission_description">Pozwala GLANCElauncher odczytywać zadania, cele, projekty, rutyny i ramy dnia oraz wysyłać zadania do utworzenia lub ukończenia.</string>
 </resources>

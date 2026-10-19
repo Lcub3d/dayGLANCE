@@ -29,6 +29,19 @@
     <uses-permission android:name="android.permission.health.READ_STEPS" />
     <uses-permission android:name="android.permission.health.READ_SLEEP" />
 
+    <!-- GLANCElauncher (docs/launcher-integration.md): the permission the
+         LauncherProvider and LauncherIntentReceiver sit behind. signature OR a
+         known signer: the LAUNCHER's certificates (values/launcher_certs.xml),
+         so a Play-signed dayGLANCE and a sideloaded launcher still pair.
+         knownSigner needs Android 12; below it the permission is signature-only
+         and the launcher stays in demo mode. -->
+    <permission
+        android:name="com.dayglance.permission.LAUNCHER"
+        android:label="@string/launcher_permission_label"
+        android:description="@string/launcher_permission_description"
+        android:protectionLevel="signature|knownSigner"
+        android:knownCerts="@array/launcher_known_certs" />
+
     <!-- Health Connect — queries block for devices running Health Connect as a standalone app -->
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
@@ -344,6 +357,25 @@
             <intent-filter>
                 <action android:name="com.dayglance.app.ACTION_SNOOZE" />
                 <action android:name="com.dayglance.app.ACTION_COMPLETE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- GLANCElauncher (docs/launcher-integration.md): the read-only snapshot
+             provider and the launcher's write receiver, both behind the launcher
+             permission. The receiver shares the envelope and the wake broadcast
+             with the automation receiver below but not its opt-in toggle. -->
+        <provider
+            android:name=".launcher.LauncherProvider"
+            android:authorities="com.dayglance.app.launcher"
+            android:exported="true"
+            android:readPermission="com.dayglance.permission.LAUNCHER" />
+        <receiver
+            android:name=".launcher.LauncherIntentReceiver"
+            android:exported="true"
+            android:permission="com.dayglance.permission.LAUNCHER">
+            <intent-filter>
+                <action android:name="com.dayglance.app.launcher.CREATE" />
+                <action android:name="com.dayglance.app.launcher.COMPLETE" />
             </intent-filter>
         </receiver>
 

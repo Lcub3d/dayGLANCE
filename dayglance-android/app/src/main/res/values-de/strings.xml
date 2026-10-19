@@ -202,4 +202,6 @@
     <string name="day_dial_legend_sleep">Schlaf</string>
     <string name="day_dial_unblocked">Ungeplant</string>
     <string name="day_dial_routines">Routinen</string>
+    <string name="launcher_permission_label">dayGLANCE-Daten für GLANCElauncher lesen</string>
+    <string name="launcher_permission_description">Erlaubt GLANCElauncher, die Aufgaben, Ziele, Projekte, Routinen und Frames des Tages zu lesen und Aufgaben zum Anlegen oder Abschließen zu senden.</string>
 </resources>

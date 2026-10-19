@@ -164,3 +164,16 @@ describe('preserveStickyFields — the plan trail unions rather than carries', (
     expect('planTrail' in out).toBe(false);
   });
 });
+
+describe('preserveStickyFields — clientId (the launcher write id)', () => {
+  // MUTATION: drop 'clientId' from STICKY_FIELDS and this fails.
+  it('back-fills the id when the incoming copy omits it', () => {
+    const [out] = preserveStickyFields([{ id: 'a', title: 'x' }], [{ id: 'a', clientId: 'w-1' }]);
+    expect(out.clientId).toBe('w-1');
+  });
+
+  it('keeps an incoming id and leaves a task that never had one alone', () => {
+    expect(preserveStickyFields([{ id: 'a', clientId: 'w-2' }], [{ id: 'a', clientId: 'w-1' }])[0].clientId).toBe('w-2');
+    expect('clientId' in preserveStickyFields([{ id: 'a' }], [{ id: 'a' }])[0]).toBe(false);
+  });
+});

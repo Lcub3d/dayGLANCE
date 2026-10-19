@@ -23,9 +23,13 @@
 // cases apart: `null` is a real unstar and propagates, absent means the winning
 // device predates the field and the local value stands.
 //
-// All three share one rule — carry forward when the incoming copy's value is
+// `clientId` (intents/launcherWrites.js) is the GLANCElauncher's id for the
+// write that created the task, stamped once and never cleared; the launcher
+// reads it back from the snapshot to retire its outbox entry.
+//
+// All four share one rule — carry forward when the incoming copy's value is
 // `undefined`, honour any explicit value — so they are listed rather than
-// written out three times. A fourth sticky field belongs in STICKY_FIELDS and
+// written out four times. A fifth sticky field belongs in STICKY_FIELDS and
 // nowhere else in this file.
 //
 // Items are matched by id. Fields are handled independently: a task can be
@@ -33,7 +37,7 @@
 import { mergeDeferrals } from './deferrals.js';
 import { mergePlanTrail, sameTrail } from './planTrail.js';
 
-export const STICKY_FIELDS = ['archived', 'originalPlan', 'starredDate'];
+export const STICKY_FIELDS = ['archived', 'originalPlan', 'starredDate', 'clientId'];
 //
 // @param {object[]} incoming  the merged/remote tasks about to be applied
 // @param {object[]} existing  the current in-memory tasks (source of the values)

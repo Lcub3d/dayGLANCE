@@ -3,7 +3,7 @@ import i18n from 'i18next';
 import { Plus, Clock, X, GripVertical, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Moon, Sun, Upload, Inbox, AlertCircle, Calendar, Check, RefreshCw, Palette, Trash2, Undo2, BarChart3, SkipForward, Hash, MoreHorizontal, Save, Menu, BrainCircuit, AlertTriangle, FileText, ExternalLink, CheckSquare, HelpCircle, Sparkles, Link, GripHorizontal, Play, Pause, Trophy, Cloud, Settings, Search, Bell, Target, TrendingUp, Zap, CalendarDays, Ban, Volume2, VolumeX, Pencil, Eye, Filter, Smartphone, CheckCircle, Pin, PinOff, NotebookPen, MapPin, BookOpen, Flag, FolderOpen, Droplets, Footprints, Dumbbell, Apple, Cigarette, Coffee, Flame, Heart, ListChecks, Minus, Wine, Candy, Pill, Activity, CupSoda, Mic, MicOff, Loader, Key, Server, Wifi, WifiOff, LayoutGrid, RotateCcw } from 'lucide-react';
 import { mergeTaskArrays, mergeSyncData } from './mergeSync.js';
 import { hasNativeCalendar, electronGetCalendars, electronGetEventsByDate, electronRequestCalendarAccess, nativeEventToTask, nativeResultsToTasks } from './utils/nativeCalendar.js';
-import { isNativeAndroid, isNativeApp, isNativeIOS, nativeShareFile, nativeShowTaskNotification, nativeGetPendingAction, nativeSyncReminders, nativeGetEvents, nativeUpdateEvent, nativeGetCalendars, nativeHttpRequest, nativeWriteDailyNote, nativeClearVault, nativeEnterFocusMode, nativeExitFocusMode, nativeIsDndPermissionGranted, nativeRequestDndPermission, nativeGetWidgetPendingAction, triggerHaptic } from './native.js';
+import { isNativeAndroid, isNativeApp, isNativeIOS, nativeShareFile, nativeShowTaskNotification, nativeGetPendingAction, nativeSyncReminders, nativeGetEvents, nativeUpdateEvent, nativeGetCalendars, nativeHttpRequest, nativeWriteDailyNote, nativeClearVault, nativeEnterFocusMode, nativeExitFocusMode, nativeIsDndPermissionGranted, nativeRequestDndPermission, nativeGetWidgetPendingAction, triggerHaptic, nativeTouchLauncherHeartbeat } from './native.js';
 import { readDailyNoteFresh, readDailyNoteNative, simpleHash as obsidianSimpleHash, buildNewObsidianTaskMeta, dailyNoteFilename } from './obsidian.js';
 import { appendTaskDirect, writeDailyNoteDirect } from './utils/obsidianDirectWrites.js';
 import { emitBridgeIntent } from './utils/obsidianBridgeStream.js';
@@ -37,6 +37,7 @@ import { directAccessTransport } from './sync/directAccessTransport.js';
 import useDirectAccessStatus from './hooks/useDirectAccessStatus.js';
 import { evaluateSnapshotPush } from './utils/widgetSnapshotDedupe.js';
 import { buildLauncherSnapshot, launcherSnapshotFingerprint } from './utils/launcherSnapshot.js';
+import { latestSyncedAt } from './utils/launcherHeartbeat.js';
 import { readLauncherLedger } from './intents/launcherWrites.js';
 import { buildWidgetSnapshot, readCachedSteps } from './utils/widgetSnapshot.js';
 import { loadAlarmPrefs } from './utils/dialPrefs.js';
@@ -1819,6 +1820,25 @@ const DayPlanner = () => {
   useOutboxFlush();
 
   // Android intent transport: picks up pending intents on visibilitychange and calls handleIntent.
+  // The launcher heartbeat (utils/launcherHeartbeat.js): when the app last
+  // looked, and when a sync tier last completed. Read from the engines, so a
+  // disabled tier contributes nothing and a stale stamp cannot pose as fresh.
+  const touchLauncherHeartbeatRef = useRef(null);
+  const touchLauncherHeartbeat = useCallback(() => {
+    if (!isNativeAndroid()) return;
+    const fileTier = cloudSyncConfig?.enabled ? cloudSyncEngineRef.current?.getLastSynced?.() : null;
+    const dbTier = dbEngineRef.current?.getLastSynced?.() ?? null;
+    nativeTouchLauncherHeartbeat({ checkedAt: Date.now(), syncedAt: latestSyncedAt(fileTier, dbTier) });
+  }, [cloudSyncConfig?.enabled]);
+  touchLauncherHeartbeatRef.current = touchLauncherHeartbeat;
+  // One full pass of every configured tier, awaited, for the launcher's REFRESH.
+  const runLauncherSyncCycle = useCallback(async () => {
+    const jobs = [];
+    if (cloudSyncConfig?.enabled && cloudSyncEngineRef.current?.sync) jobs.push(cloudSyncEngineRef.current.sync());
+    if (dbEngineRef.current?.dbSyncCycle) jobs.push(dbEngineRef.current.dbSyncCycle());
+    await Promise.all(jobs);
+  }, [cloudSyncConfig?.enabled]);
+
   useAndroidIntentBridge({
     tasks, unscheduledTasks, recurringTasks, projects,
     setTasks, setUnscheduledTasks, setRecurringTasks,
@@ -1826,6 +1846,8 @@ const DayPlanner = () => {
     // The launcher's MOVE, RESIZE and TOGGLE_ROUTINE (intents/launcherWrites.js)
     // read today's routines for their guards and toggle a completion.
     todayRoutines, routinesDate, routineCompletions, routinesEnabled, toggleRoutineCompletion,
+    // REFRESH runs the tiers and re-stamps the heartbeat.
+    runSyncCycle: runLauncherSyncCycle, touchLauncherHeartbeat,
     navigate: tab => {
       const mobileTab = tab === 'glance' ? 'dayglance' : tab;
       setMobileActiveTab(mobileTab);
@@ -2283,6 +2305,7 @@ const DayPlanner = () => {
       if (!document.hidden && !window.DayGlanceIOS) {
         clearStrandedSyncGuards();
         setCurrentTime(new Date());
+        touchLauncherHeartbeatRef.current?.();
         // Direct engine.download() bypasses the poll's backoff check so a
         // user returning to the app gets a prompt retry even mid-backoff.
         cloudSyncDownloadRef.current?.();
@@ -7434,11 +7457,16 @@ const DayPlanner = () => {
       handledWrites: readLauncherLedger(),
     });
     const fingerprint = launcherSnapshotFingerprint(snapshot);
-    if (fingerprint === lastLauncherSnapshotRef.current) return;
+    if (fingerprint === lastLauncherSnapshotRef.current) {
+      // Nothing changed, but the app looked: say so, cheaply, without re-pushing.
+      touchLauncherHeartbeat();
+      return;
+    }
     lastLauncherSnapshotRef.current = fingerprint;
     try {
       window.DayGlanceNative.updateLauncherSnapshot(JSON.stringify(snapshot));
     } catch (_) {}
+    touchLauncherHeartbeat();
     // getFrameInstancesForDate and getDayWindow are stable per their inputs;
     // the ledger changes only with a launcher write, which changes tasks too.
     // eslint-disable-next-line react-hooks/exhaustive-deps

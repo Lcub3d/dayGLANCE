@@ -24,7 +24,7 @@ import org.json.JSONObject
  *    on the id, so a re-sent write is harmless.
  *
  * Actions: `com.dayglance.app.launcher.CREATE`, `.COMPLETE`, `.UNCOMPLETE`, `.MOVE`,
- * `.RESIZE` and `.TOGGLE_ROUTINE`.
+ * `.RESIZE`, `.TOGGLE_ROUTINE` and `.REFRESH` (not a write: see [refresh]).
  */
 class LauncherIntentReceiver : BroadcastReceiver() {
 
@@ -34,6 +34,10 @@ class LauncherIntentReceiver : BroadcastReceiver() {
         val clientId = intent.getStringExtra("clientId")?.takeIf { it.isNotBlank() }
         if (clientId == null) {
             Log.w(TAG, "Dropped $action: no clientId")
+            return
+        }
+        if (action == ACTION_REFRESH) {
+            refresh(context, clientId)
             return
         }
         // Re-serialise through JSONObject so a crafted payload cannot inject structure.
@@ -54,14 +58,54 @@ class LauncherIntentReceiver : BroadcastReceiver() {
         context.sendBroadcast(Intent(MainActivity.ACTION_INTENT_RECEIVED).setPackage(context.packageName))
     }
 
+    /**
+     * REFRESH, routed by liveness. With the renderer alive the request is queued
+     * and the wake makes the web layer run every sync tier and re-push (it reports
+     * `ran` or `failed` into the log). With no renderer there is nothing to run it:
+     * the request is logged `deferred` and the launcher shows the honest age. A
+     * second REFRESH inside [INFLIGHT_MS] of one still running is `coalesced`.
+     * Every entry carries the liveness it saw, so standby-bucket deferral and
+     * dead-process gaps are visible in the launcher's diagnostics over time.
+     */
+    private fun refresh(context: Context, clientId: String) {
+        val store = SharedDataStore(context)
+        if (store.launcherRefreshSeen(clientId)) return
+        val now = System.currentTimeMillis()
+        val alive = MainActivity.rendererAlive
+        val last = store.lastLauncherRefresh()
+        val entry = JSONObject().put("clientId", clientId).put("requestedAt", now).put("liveness", if (alive) "alive" else "dead")
+        val inFlight = last != null && last.optString("outcome") == "queued" && !last.has("finishedAt") && now - last.optLong("requestedAt") < INFLIGHT_MS
+        when {
+            inFlight -> entry.put("outcome", "coalesced").put("reason", "a refresh is in flight")
+            !alive -> entry.put("outcome", "deferred").put("reason", "process not running")
+            else -> {
+                entry.put("outcome", "queued")
+                val queued = JSONObject()
+                    .put("action", ACTION_REFRESH)
+                    .put("payload", JSONObject())
+                    .put("clientId", clientId)
+                    .put("receivedAt", now)
+                store.appendPendingLauncherIntent(queued.toString())
+            }
+        }
+        store.appendLauncherRefresh(entry)
+        context.contentResolver.notifyChange(LauncherProvider.CONTENT_URI, null)
+        if (entry.optString("outcome") == "queued") {
+            context.sendBroadcast(Intent(MainActivity.ACTION_INTENT_RECEIVED).setPackage(context.packageName))
+        }
+    }
+
     companion object {
         private const val TAG = "LauncherIntents"
+        /** A queued refresh older than this with no outcome is treated as lost, not in flight. */
+        private const val INFLIGHT_MS = 60_000L
         const val ACTION_CREATE = "com.dayglance.app.launcher.CREATE"
         const val ACTION_COMPLETE = "com.dayglance.app.launcher.COMPLETE"
         const val ACTION_UNCOMPLETE = "com.dayglance.app.launcher.UNCOMPLETE"
         const val ACTION_MOVE = "com.dayglance.app.launcher.MOVE"
         const val ACTION_RESIZE = "com.dayglance.app.launcher.RESIZE"
         const val ACTION_TOGGLE_ROUTINE = "com.dayglance.app.launcher.TOGGLE_ROUTINE"
-        val ACTIONS = setOf(ACTION_CREATE, ACTION_COMPLETE, ACTION_UNCOMPLETE, ACTION_MOVE, ACTION_RESIZE, ACTION_TOGGLE_ROUTINE)
+        const val ACTION_REFRESH = "com.dayglance.app.launcher.REFRESH"
+        val ACTIONS = setOf(ACTION_CREATE, ACTION_COMPLETE, ACTION_UNCOMPLETE, ACTION_MOVE, ACTION_RESIZE, ACTION_TOGGLE_ROUTINE, ACTION_REFRESH)
     }
 }

@@ -41,8 +41,38 @@ version, updatedAt, timezone, today, handledWrites). Each cursor has `_id`,
 the authority, so a `ContentObserver` registered on any collection URI sees
 every change. `insert`, `update` and `delete` throw.
 
-The snapshot is as fresh as the app's last JavaScript run. `meta.updatedAt` is
-the stamp the launcher shows staleness from.
+## Freshness: the heartbeat and REFRESH
+
+The snapshot is pushed only when its content changes, so `meta.updatedAt` says
+when something last moved, not when the app last looked. Two more stamps say
+that (`utils/launcherHeartbeat.js`), written natively beside the snapshot and
+merged into `meta` by the provider:
+
+- `checkedAt` (ms): every run of the snapshot builder, changed or not, and
+  every return to the foreground.
+- `syncedAt` (ISO): the latest completed cycle across the enabled sync tiers
+  (the file tier's and the vault's `getLastSynced`), the moment other devices'
+  changes are known to be in. Null when no tier is configured.
+
+`meta` also carries `rendererAlive` (whether a MainActivity with a live WebView
+exists in the process at the moment of the read) and `refreshLog`, the last 20
+REFRESH requests.
+
+**`com.dayglance.app.launcher.REFRESH`** asks the app to confirm its data now.
+It is not a write: it carries a `clientId` for dedupe and logging only, is never
+in the handled ledger, and the launcher sends it outside its outbox. The
+receiver routes it by liveness and logs every request with the liveness it saw:
+
+| Outcome | When |
+| --- | --- |
+| `queued` | the renderer is alive: queued and woken; the web layer runs every enabled tier to completion, re-pushes, re-stamps the heartbeat, then reports `ran` (with `durationMs`) or `failed` (with `reason`) into the same entry |
+| `coalesced` | a queued refresh from the last minute has no outcome yet |
+| `deferred` | no renderer in the process: nothing can run the sync (the headless worker, when it lands, turns this into a scheduled run) |
+
+The launcher measures staleness per app from `syncedAt` when sync is
+configured and from `checkedAt` otherwise, and its diagnostics panel shows
+the log, so standby-bucket deferral and dead-process gaps are visible over
+time.
 
 ## Writes: the launcher receiver
 
@@ -127,7 +157,13 @@ With the launcher's real digests in `launcher_certs.xml` and both apps installed
    `'{"routine_id":"<an id from routines>"}'` flips today's pill. A MOVE of a
    `recurring-…` id is refused, and `meta.handledWrites` lists that id with its
    `error`.
-4. Permission: from any app without the permission the query is refused
+4. A refresh: `am broadcast -a com.dayglance.app.launcher.REFRESH -n
+   com.dayglance.app/.launcher.LauncherIntentReceiver --es clientId rf-1`.
+   With the app alive, `meta.refreshLog` shows the entry go `queued` then
+   `ran`, and `syncedAt` moves if a tier is configured; with the process
+   killed (`adb shell am kill com.dayglance.app`, never `force-stop`), the
+   entry is `deferred` and `rendererAlive` reads false.
+5. Permission: from any app without the permission the query is refused
    with a `SecurityException` and the broadcast is not delivered.
 
 Unit tests: `vitest run src/utils/launcherSnapshot.test.js

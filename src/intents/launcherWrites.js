@@ -28,6 +28,8 @@ import { ACTIONS } from '@glance-apps/intents';
 import { handleIntent } from './handleIntent.js';
 import { applyMoveBlock, applyResizeBlock, applyScheduleTask, applySetCompletion, parseRecurringInstanceId } from '../utils/taskMutations.js';
 import { dateToString } from '../utils/taskUtils.js';
+import { nativeRecordLauncherRefresh } from '../native.js';
+import { REFRESH_OUTCOMES } from '../utils/launcherHeartbeat.js';
 
 export const LAUNCHER_LEDGER_KEY = 'day-planner-launcher-handled';
 export const LAUNCHER_LEDGER_LIMIT = 500;
@@ -38,6 +40,7 @@ export const LAUNCHER_ONLY = Object.freeze({
   MOVE: 'move',
   RESIZE: 'resize',
   TOGGLE_ROUTINE: 'toggle_routine',
+  REFRESH: 'refresh',
 });
 
 export const LAUNCHER_ACTIONS = {
@@ -47,7 +50,14 @@ export const LAUNCHER_ACTIONS = {
   'com.dayglance.app.launcher.MOVE': LAUNCHER_ONLY.MOVE,
   'com.dayglance.app.launcher.RESIZE': LAUNCHER_ONLY.RESIZE,
   'com.dayglance.app.launcher.TOGGLE_ROUTINE': LAUNCHER_ONLY.TOGGLE_ROUTINE,
+  'com.dayglance.app.launcher.REFRESH': LAUNCHER_ONLY.REFRESH,
 };
+
+// REFRESH is not a write and is not in the ledger: the native receiver dedupes
+// it against its own refresh log, and this set catches a re-delivery within one
+// JS session before the log has the outcome.
+const recentRefreshIds = [];
+const REFRESH_MEMORY = 20;
 
 const ok = (extra = {}) => ({ success: true, error: '', ...extra });
 const fail = (error) => ({ success: false, error });
@@ -191,6 +201,35 @@ function toggleRoutine(payload, context) {
 }
 
 /**
+ * REFRESH: run every configured sync tier to completion, re-push the snapshot
+ * and the heartbeat, and record how it went in the native refresh log. The
+ * launcher reads the outcome (and `syncedAt`) from the next meta row.
+ */
+async function refresh(clientId, context) {
+  if (recentRefreshIds.includes(clientId)) return ok({ deduped: true });
+  recentRefreshIds.push(clientId);
+  if (recentRefreshIds.length > REFRESH_MEMORY) recentRefreshIds.shift();
+  const record = context.recordLauncherRefresh ?? nativeRecordLauncherRefresh;
+  const started = Date.now();
+  if (typeof context.runSyncCycle !== 'function') {
+    record({ clientId, outcome: REFRESH_OUTCOMES.FAILED, reason: 'no sync cycle available', durationMs: 0 });
+    return fail('no sync cycle available');
+  }
+  try {
+    await context.runSyncCycle();
+    context.touchLauncherHeartbeat?.();
+    const durationMs = Date.now() - started;
+    record({ clientId, outcome: REFRESH_OUTCOMES.RAN, durationMs });
+    return ok({ durationMs });
+  } catch (err) {
+    const reason = err?.message || String(err);
+    context.touchLauncherHeartbeat?.();
+    record({ clientId, outcome: REFRESH_OUTCOMES.FAILED, reason, durationMs: Date.now() - started });
+    return fail(reason);
+  }
+}
+
+/**
  * Handle one launcher write.
  *
  * @param {{action: string, payload?: object, clientId?: string}} intent
@@ -203,6 +242,7 @@ export async function handleLauncherIntent(intent, context = {}, io = {}) {
   const mapped = LAUNCHER_ACTIONS[action];
   if (!mapped) return fail(`Unknown launcher action: ${action}`);
   if (typeof clientId !== 'string' || !clientId) return fail('clientId required');
+  if (mapped === LAUNCHER_ONLY.REFRESH) return refresh(clientId, context);
 
   const ledger = io.ledger ?? readLauncherLedger();
   const persist = io.persist ?? (next => writeLauncherLedger(next));

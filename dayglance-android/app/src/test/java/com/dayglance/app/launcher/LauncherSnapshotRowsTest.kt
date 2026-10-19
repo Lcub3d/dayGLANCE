@@ -45,6 +45,23 @@ class LauncherSnapshotRowsTest {
     }
 
     @Test
+    fun `meta carries the heartbeat, the refresh log and liveness, even without a snapshot`() {
+        val hb = """{"checkedAt":1760000100000,"syncedAt":"2026-10-19T08:00:00.000Z"}"""
+        val log = """[{"clientId":"r1","requestedAt":1,"outcome":"queued","liveness":"alive"}]"""
+        val meta = JSONObject(LauncherSnapshotRows.rows(snapshot, "meta", hb, log, true)!!.single().json)
+        assertEquals(1760000000000L, meta.getLong("updatedAt"))
+        assertEquals(1760000100000L, meta.getLong("checkedAt"))
+        assertEquals("2026-10-19T08:00:00.000Z", meta.getString("syncedAt"))
+        assertTrue(meta.getBoolean("rendererAlive"))
+        assertEquals("queued", meta.getJSONArray("refreshLog").getJSONObject(0).getString("outcome"))
+        // A heartbeat before any snapshot still answers.
+        val bare = JSONObject(LauncherSnapshotRows.rows(null, "meta", hb, null, false)!!.single().json)
+        assertEquals(1760000100000L, bare.getLong("checkedAt"))
+        assertTrue(!bare.has("updatedAt"))
+        assertEquals(0, LauncherSnapshotRows.rows(null, "meta", null, null, null)!!.size)
+    }
+
+    @Test
     fun `an unknown collection is null, no snapshot or bad JSON is empty`() {
         assertNull(LauncherSnapshotRows.rows(snapshot, "habits"))
         assertEquals(0, LauncherSnapshotRows.rows(null, "tasks")!!.size)

@@ -682,6 +682,39 @@ class NativeBridge(
     @JavascriptInterface
     fun getPendingLauncherIntents(): String = dataStore.drainPendingLauncherIntents()
 
+    /**
+     * The launcher heartbeat ({checkedAt, syncedAt}), written on every run of the
+     * snapshot builder and on each foreground, changed or not, and announced so
+     * the launcher measures staleness from the last confirmation.
+     */
+    @JavascriptInterface
+    fun touchLauncherHeartbeat(json: String) {
+        try {
+            val incoming = org.json.JSONObject(json)
+            val merged = dataStore.launcherHeartbeat?.let { org.json.JSONObject(it) } ?: org.json.JSONObject()
+            for (key in incoming.keys()) merged.put(key, incoming.get(key))
+            dataStore.launcherHeartbeat = merged.toString()
+            context.contentResolver.notifyChange(com.dayglance.app.launcher.LauncherProvider.CONTENT_URI, null)
+        } catch (e: Exception) {
+            android.util.Log.w("LauncherSnapshot", "Failed to store the launcher heartbeat", e)
+        }
+    }
+
+    /** The outcome of a launcher REFRESH ({clientId, outcome, reason?, durationMs}), merged into its log entry. */
+    @JavascriptInterface
+    fun recordLauncherRefresh(json: String) {
+        try {
+            val entry = org.json.JSONObject(json)
+            val clientId = entry.optString("clientId")
+            if (clientId.isEmpty()) return
+            entry.put("finishedAt", System.currentTimeMillis())
+            dataStore.updateLauncherRefresh(clientId, entry)
+            context.contentResolver.notifyChange(com.dayglance.app.launcher.LauncherProvider.CONTENT_URI, null)
+        } catch (e: Exception) {
+            android.util.Log.w("LauncherSnapshot", "Failed to record a launcher refresh", e)
+        }
+    }
+
     @JavascriptInterface
     fun getPendingIntent(): String {
         val json = dataStore.pendingIntentJson ?: return ""

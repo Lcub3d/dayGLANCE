@@ -36,7 +36,12 @@ class LauncherProvider : ContentProvider() {
     override fun query(uri: Uri, projection: Array<String>?, selection: String?, selectionArgs: Array<String>?, sortOrder: String?): Cursor? {
         if (matcher.match(uri) != 1) return null
         val collection = uri.lastPathSegment ?: return null
-        val rows = LauncherSnapshotRows.rows(store.launcherSnapshot, collection) ?: return null
+        val rows = LauncherSnapshotRows.rows(
+            store.launcherSnapshot, collection,
+            heartbeatJson = store.launcherHeartbeat,
+            refreshLogJson = store.launcherRefreshLog,
+            rendererAlive = com.dayglance.app.MainActivity.rendererAlive,
+        ) ?: return null
         val cursor = MatrixCursor(LauncherSnapshotRows.COLUMNS, rows.size)
         rows.forEachIndexed { i, row -> cursor.addRow(arrayOf<Any?>(i, row.id, row.json)) }
         context?.let { cursor.setNotificationUri(it.contentResolver, CONTENT_URI) }

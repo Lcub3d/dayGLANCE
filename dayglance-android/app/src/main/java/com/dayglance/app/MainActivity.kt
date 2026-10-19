@@ -284,6 +284,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        rendererAlive = true
         nativeBridge = NativeBridge(
             context = this,
             healthRepository = healthRepository,
@@ -623,6 +624,7 @@ class MainActivity : AppCompatActivity() {
         if (::billingManager.isInitialized) billingManager.destroy()
         // Release the platform speech recognizer (no-op if never attached).
         if (::nativeBridge.isInitialized) nativeBridge.destroySpeechBridge()
+        rendererAlive = false
         // Tear the SSE reader down cleanly — no leaked connection or coroutine.
         vaultSseClient.shutdown()
         if (intentForwardReceiverRegistered) {
@@ -925,6 +927,13 @@ class MainActivity : AppCompatActivity() {
         const val ACTION_ADD_TASK       = "com.dayglance.app.ACTION_ADD_TASK"
         const val ACTION_ADD_INBOX_TASK = "com.dayglance.app.ACTION_ADD_INBOX_TASK"
         const val ACTION_INTENT_RECEIVED = "com.dayglance.app.INTENT_RECEIVED"
+        /**
+         * True while a MainActivity with a live WebView exists in this process. A
+         * static, so a dead process answers false by construction. The launcher
+         * receiver routes REFRESH on it (docs/launcher-integration.md): alive, the
+         * renderer runs the sync; dead, there is nothing to run it (yet).
+         */
+        @Volatile var rendererAlive: Boolean = false
         /** The app's URL scheme: dayglance://day?date=…&view=month (the month grid's taps). */
         const val DEEP_LINK_SCHEME = "dayglance"
 

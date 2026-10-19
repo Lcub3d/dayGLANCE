@@ -130,6 +130,55 @@ class SharedDataStore(context: Context) {
         return json
     }
 
+    /**
+     * The launcher heartbeat (utils/launcherHeartbeat.js): a JSON object with
+     * `checkedAt` (ms, when the app last looked) and `syncedAt` (ISO, when a sync
+     * tier last completed), written on every run of the snapshot builder whether
+     * or not the snapshot changed. LauncherProvider merges it into `meta`.
+     */
+    var launcherHeartbeat: String?
+        get() = prefs.getString(KEY_LAUNCHER_HEARTBEAT, null)
+        set(value) = prefs.edit { putString(KEY_LAUNCHER_HEARTBEAT, value) }
+
+    /** The last few launcher REFRESH requests and how each went, newest last; a JSON array. */
+    val launcherRefreshLog: String
+        get() = prefs.getString(KEY_LAUNCHER_REFRESH_LOG, null) ?: "[]"
+
+    /** Whether a REFRESH with this client id is already in the log (the receiver's dedupe). */
+    fun launcherRefreshSeen(clientId: String): Boolean = launcherRefreshEntries().any { it.optString("clientId") == clientId }
+
+    /** The newest entry, for the receiver's in-flight check. */
+    fun lastLauncherRefresh(): JSONObject? = launcherRefreshEntries().lastOrNull()
+
+    /** Appends one refresh entry, keeping the log to the newest [MAX_LAUNCHER_REFRESH_LOG]. */
+    fun appendLauncherRefresh(entry: JSONObject) {
+        val entries = launcherRefreshEntries()
+        entries.add(entry)
+        writeLauncherRefreshLog(entries.takeLast(MAX_LAUNCHER_REFRESH_LOG))
+    }
+
+    /** Merges [patch] into the entry with this client id (the web layer reporting an outcome). */
+    fun updateLauncherRefresh(clientId: String, patch: JSONObject) {
+        val entries = launcherRefreshEntries()
+        val i = entries.indexOfLast { it.optString("clientId") == clientId }
+        if (i < 0) return
+        for (key in patch.keys()) entries[i].put(key, patch.get(key))
+        writeLauncherRefreshLog(entries)
+    }
+
+    private fun launcherRefreshEntries(): MutableList<JSONObject> {
+        val arr = try { JSONArray(launcherRefreshLog) } catch (e: Exception) { JSONArray() }
+        val out = ArrayList<JSONObject>(arr.length())
+        for (i in 0 until arr.length()) arr.optJSONObject(i)?.let { out.add(it) }
+        return out
+    }
+
+    private fun writeLauncherRefreshLog(entries: List<JSONObject>) {
+        val arr = JSONArray()
+        for (e in entries) arr.put(e)
+        prefs.edit { putString(KEY_LAUNCHER_REFRESH_LOG, arr.toString()) }
+    }
+
     // ── Notification pending actions ─────────────────────────────────────────
 
     /**
@@ -428,6 +477,9 @@ class SharedDataStore(context: Context) {
         private const val KEY_LAUNCHER_SNAPSHOT = "launcher_snapshot"
         private const val KEY_LAUNCHER_SNAPSHOT_TS = "launcher_snapshot_ts"
         private const val KEY_PENDING_LAUNCHER_INTENTS = "pending_launcher_intents"
+        private const val KEY_LAUNCHER_HEARTBEAT = "launcher_heartbeat"
+        private const val KEY_LAUNCHER_REFRESH_LOG = "launcher_refresh_log"
+        private const val MAX_LAUNCHER_REFRESH_LOG = 20
         private const val MAX_PENDING_LAUNCHER_INTENTS = 200
         private const val KEY_PENDING_DEEP_LINK = "pending_deep_link"
         private const val KEY_AUTOMATION_INTENTS_ENABLED = "automation_intents_enabled"

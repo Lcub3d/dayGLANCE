@@ -380,6 +380,7 @@
                 <action android:name="com.dayglance.app.launcher.MOVE" />
                 <action android:name="com.dayglance.app.launcher.RESIZE" />
                 <action android:name="com.dayglance.app.launcher.TOGGLE_ROUTINE" />
+                <action android:name="com.dayglance.app.launcher.REFRESH" />
             </intent-filter>
         </receiver>
 

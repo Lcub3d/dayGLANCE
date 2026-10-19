@@ -488,6 +488,28 @@ export const nativeGetPendingLauncherIntents = () => {
   }
 };
 
+/**
+ * The launcher heartbeat (utils/launcherHeartbeat.js): { checkedAt, syncedAt }.
+ * Stored beside the snapshot and announced to the provider's observers, so a
+ * run of the builder that changed nothing still says the app looked.
+ */
+export const nativeTouchLauncherHeartbeat = (heartbeat) => {
+  const bridge = nativeBridge();
+  if (!bridge?.touchLauncherHeartbeat) return;
+  try {
+    bridge.touchLauncherHeartbeat(JSON.stringify(heartbeat));
+  } catch (_) {}
+};
+
+/** The outcome of one launcher REFRESH, recorded against its clientId in the native refresh log. */
+export const nativeRecordLauncherRefresh = (entry) => {
+  const bridge = nativeBridge();
+  if (!bridge?.recordLauncherRefresh) return;
+  try {
+    bridge.recordLauncherRefresh(JSON.stringify(entry));
+  } catch (_) {}
+};
+
 export const nativeReportIntentResult = (action, resultJson) => {
   const bridge = nativeBridge();
   if (!bridge?.reportIntentResult) return;

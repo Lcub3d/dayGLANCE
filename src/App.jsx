@@ -527,6 +527,10 @@ const DayPlanner = () => {
   // A project to bring into view in the Goals & Projects space (the Project
   // widget's tap, utils/goalsLink.js). GoalDashboard consumes and clears it.
   const [goalsDashboardFocusProjectId, setGoalsDashboardFocusProjectId] = useState(null);
+  // A panel request without a focus ('goals' | 'projects'): a dayglance://goal
+  // or project link with tab= and no id (utils/goalsLink.js). GoalDashboard
+  // consumes and clears it.
+  const [goalsDashboardFocusTab, setGoalsDashboardFocusTab] = useState(null);
   // Project whose PLANNER dashboard is open — rendered at the app top level so
   // it stacks between the G&P dashboard (z-60) and the task editor (z-80).
   const [plannerProjectId, setPlannerProjectId] = useState(null);
@@ -2628,6 +2632,15 @@ const DayPlanner = () => {
         else if (action === 'completeTask' && taskId) completeFromWidgetRef.current(taskId);
         else if (action === 'newScheduledTask') openNewTaskFormRef.current?.();
         else if (action === 'newInboxTask') openNewInboxTaskRef.current?.();
+        // The Inbox itself (the launcher's Inbox corner): the calendar space,
+        // whose sidebar holds it on desktop, and the Inbox tab on a phone or
+        // tablet, as the navigate helper does.
+        else if (action === 'inbox') {
+          setDesktopSpace('calendar');
+          setMobileActiveTab('inbox');
+          setTabletActiveTab('inbox');
+          setMobileSettingsView('main');
+        }
         // Through enterFocusMode, never the bare flag: it starts a fresh
         // session and derives the block's tasks. Setting showFocusMode alone
         // reopened the last session's leftovers (often an empty task list).
@@ -2659,6 +2672,7 @@ const DayPlanner = () => {
             if (areaFilterHides(goals.find(g => g.id === goalId), goalsAreaFilter, areas)) setGoalsAreaFilter('all');
             if (r.focusGoalId) setGoalsDashboardFocusId(r.focusGoalId);
             if (r.focusProjectId) setGoalsDashboardFocusProjectId(r.focusProjectId);
+            if (r.tab) setGoalsDashboardFocusTab(r.tab);
           }
         }
       } catch (_) {}
@@ -8556,6 +8570,7 @@ const DayPlanner = () => {
     showGoalsDashboard, setShowGoalsDashboard,
     goalsDashboardFocusId, setGoalsDashboardFocusId,
     goalsDashboardFocusProjectId, setGoalsDashboardFocusProjectId,
+    goalsDashboardFocusTab, setGoalsDashboardFocusTab,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
     addGoal, updateGoal, deleteGoal,
     addArea, updateArea, deleteArea, reorderAreas,

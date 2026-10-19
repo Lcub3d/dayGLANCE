@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallba
 import i18n from 'i18next';
 import { Plus, Clock, X, GripVertical, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Moon, Sun, Upload, Inbox, AlertCircle, Calendar, Check, RefreshCw, Palette, Trash2, Undo2, BarChart3, SkipForward, Hash, MoreHorizontal, Save, Menu, BrainCircuit, AlertTriangle, FileText, ExternalLink, CheckSquare, HelpCircle, Sparkles, Link, GripHorizontal, Play, Pause, Trophy, Cloud, Settings, Search, Bell, Target, TrendingUp, Zap, CalendarDays, Ban, Volume2, VolumeX, Pencil, Eye, Filter, Smartphone, CheckCircle, Pin, PinOff, NotebookPen, MapPin, BookOpen, Flag, FolderOpen, Droplets, Footprints, Dumbbell, Apple, Cigarette, Coffee, Flame, Heart, ListChecks, Minus, Wine, Candy, Pill, Activity, CupSoda, Mic, MicOff, Loader, Key, Server, Wifi, WifiOff, LayoutGrid, RotateCcw } from 'lucide-react';
 import { mergeTaskArrays, mergeSyncData } from './mergeSync.js';
-import { hasNativeCalendar, electronGetCalendars, electronGetEventsByDate, electronRequestCalendarAccess, nativeEventToTask, nativeResultsToTasks } from './utils/nativeCalendar.js';
+import { hasNativeCalendar, electronGetCalendars, electronGetEventsByDate, electronRequestCalendarAccess, nativeEventToTask, nativeResultsToTasks, extendCalendarFilter } from './utils/nativeCalendar.js';
 import { isNativeAndroid, isNativeApp, isNativeIOS, nativeShareFile, nativeShowTaskNotification, nativeGetPendingAction, nativeSyncReminders, nativeGetEvents, nativeUpdateEvent, nativeGetCalendars, nativeHttpRequest, nativeWriteDailyNote, nativeClearVault, nativeEnterFocusMode, nativeExitFocusMode, nativeIsDndPermissionGranted, nativeRequestDndPermission, nativeGetWidgetPendingAction, triggerHaptic } from './native.js';
 import { readDailyNoteFresh, readDailyNoteNative, simpleHash as obsidianSimpleHash, buildNewObsidianTaskMeta, dailyNoteFilename } from './obsidian.js';
 import { appendTaskDirect, writeDailyNoteDirect } from './utils/obsidianDirectWrites.js';
@@ -782,7 +782,7 @@ const DayPlanner = () => {
   } = useCalendarSync();
   // Android device calendars — populated on first load when running in the native WebView
   const [availableCalendars, setAvailableCalendars] = useState([]);
-  // IDs of calendars to include; empty array = show all
+  // IDs of calendars to include; empty array = show all, [CALENDAR_FILTER_NONE] = show none
   const [calendarFilter, setCalendarFilter] = useState(() => {
     try { return JSON.parse(localStorage.getItem('day-planner-calendar-filter') || '[]'); } catch { return []; }
   });
@@ -4212,11 +4212,7 @@ const DayPlanner = () => {
         // from localStorage, before the async calendar list does). Mobile is
         // unaffected — nativeGetCalendars() is synchronous.
         if (prev.length > 0) {
-          setCalendarFilter(f => {
-            if (f.length === 0) return f;
-            const toAdd = newCals.map(c => c.id).filter(id => !f.includes(id));
-            return toAdd.length > 0 ? [...f, ...toAdd] : f;
-          });
+          setCalendarFilter(f => extendCalendarFilter(f, newCals.map(c => c.id)));
         }
         return [...prev, ...newCals];
       });

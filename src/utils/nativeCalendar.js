@@ -98,6 +98,48 @@ export const electronGetEventsByDate = async (dates) => {
 };
 
 /**
+ * The device-calendar filter ('day-planner-calendar-filter', synced) lists the
+ * calendar ids to show. An empty list shows every calendar, which is what
+ * stored and synced filters already mean. Hiding every calendar is a list
+ * holding only this placeholder (#2120): it matches no real id, so every
+ * consumer's "keep only these ids" check hides everything without knowing
+ * about it, including a device on a build that predates it.
+ */
+export const CALENDAR_FILTER_NONE = '__none__';
+
+export const isCalendarFilterNone = (filter) =>
+  filter.length > 0 && filter.every(id => id === CALENDAR_FILTER_NONE);
+
+export const isCalendarShown = (filter, id) =>
+  filter.length === 0 || filter.includes(id);
+
+/**
+ * The filter after the user toggles one calendar's checkbox. Checking the last
+ * unchecked calendar collapses to [] (show all, so calendars added later show
+ * too); unchecking the last checked one becomes the placeholder rather than []
+ * — [] would mean "show all" and every box would spring back on.
+ *
+ * @param allIds  The ids of the calendars listed in settings.
+ */
+export function toggleCalendarInFilter(filter, id, allIds) {
+  const current = filter.length === 0 ? allIds : filter.filter(f => f !== CALENDAR_FILTER_NONE);
+  const next = current.includes(id) ? current.filter(f => f !== id) : [...current, id];
+  if (next.length === 0) return [CALENDAR_FILTER_NONE];
+  return allIds.every(a => next.includes(a)) ? [] : next;
+}
+
+/**
+ * The filter after calendars are discovered that the list did not have: they
+ * show as checked when some calendars are shown, and stay hidden when the user
+ * has hidden every calendar.
+ */
+export function extendCalendarFilter(filter, newIds) {
+  if (filter.length === 0 || isCalendarFilterNone(filter)) return filter;
+  const toAdd = newIds.filter(id => !filter.includes(id));
+  return toAdd.length > 0 ? [...filter, ...toAdd] : filter;
+}
+
+/**
  * Maps a native calendar event (mobile bridge or Electron helper — identical
  * shape) to a `_native`-flagged task. `_native` tasks are excluded from saveData
  * so they're never persisted or synced.

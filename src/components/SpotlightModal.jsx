@@ -19,7 +19,9 @@ const SpotlightModal = () => {
   } = useDayPlannerCtx();
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex justify-center" style={{ paddingTop: isMobile ? '2rem' : '15vh' }} onClick={() => setShowSpotlight(false)}>
+    // z-[80]: above the Project Planner overlay (z-[70]), which Cmd/Ctrl+K can
+    // be pressed over; at z-50 the search opened underneath it (#2131).
+    <div className="fixed inset-0 bg-black/50 z-[80] flex justify-center" style={{ paddingTop: isMobile ? '2rem' : '15vh' }} onClick={() => setShowSpotlight(false)}>
       <div
         className={`${cardBg} rounded-lg shadow-xl border ${borderClass} max-w-xl w-full mx-4 h-fit`}
         onClick={(e) => e.stopPropagation()}

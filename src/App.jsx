@@ -536,6 +536,7 @@ const DayPlanner = () => {
   // Project whose PLANNER dashboard is open — rendered at the app top level so
   // it stacks between the G&P dashboard (z-60) and the task editor (z-80).
   const [plannerProjectId, setPlannerProjectId] = useState(null);
+  const closePlanner = useCallback(() => setPlannerProjectId(null), []);
   const [weekViewMode, setWeekViewMode] = useState(() => {
     const saved = localStorage.getItem('day-planner-week-view-mode');
     return saved ? JSON.parse(saved) : 'strict';
@@ -1681,6 +1682,7 @@ const DayPlanner = () => {
     setInboxArchivedExpanded,
     setDailyNotesModalDate,
     calendarRef,
+    closePlanner,
   });
 
   const {
@@ -9495,8 +9497,11 @@ const DayPlanner = () => {
         </div>
       )}
 
-      {/* Refocus timeline toast — all form factors except mobile list view */}
-      {timelineScrolledAway && effectiveViewMode === 'multi' && !((isMobile && (mobileViewMode === 'list' || mobileViewMode === 'sched' || mobileViewMode === 'month')) || tabletListView) && (
+      {/* Refocus timeline toast — all form factors except mobile list view.
+          Not over the Goals & Projects space: it replaces the calendar, but
+          timelineScrolledAway keeps its value, so the pill would point at a
+          timeline that is no longer on screen (#2134). */}
+      {timelineScrolledAway && effectiveViewMode === 'multi' && desktopSpace !== 'goals' && !((isMobile && (mobileViewMode === 'list' || mobileViewMode === 'sched' || mobileViewMode === 'month')) || tabletListView) && (
         <RefocusTimelineToast isMobile={isMobile} onRefocus={() => { setTimelineScrolledAway(false); scrollToCurrentHour(true); }} />
       )}
 

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { nativeEventToTask } from './nativeCalendar.js';
+import {
+  nativeEventToTask, nativeResultsToTasks, CALENDAR_FILTER_NONE, isCalendarFilterNone,
+  isCalendarShown, toggleCalendarInFilter, extendCalendarFilter,
+} from './nativeCalendar.js';
 
 // The Electron EventKit helper emits the exact same JSON shape as the mobile
 // DayGlanceNative bridge, so these fixtures double as the Electron contract.
@@ -114,5 +117,56 @@ describe('nativeEventToTask', () => {
     const overnight = ev({ start: '2026-06-22T23:00:00', end: '2026-06-23T01:00:00' });
     expect(nativeEventToTask({ ...overnight, _queryDate: '2026-06-22' }).id)
       .toBe(nativeEventToTask({ ...overnight, _queryDate: '2026-06-23' }).id);
+  });
+});
+
+// #2120: unchecking every device calendar used to collapse the filter to [],
+// which means "show all", so every box sprang back on and nothing was hidden.
+describe('device calendar filter', () => {
+  const ALL = ['cal-work', 'cal-home', 'cal-holidays'];
+  const NONE = [CALENDAR_FILTER_NONE];
+
+  // Uncheck/check through the same function the settings checkboxes call.
+  const toggleAll = (filter, ids) => ids.reduce((f, id) => toggleCalendarInFilter(f, id, ALL), filter);
+
+  it('unchecking every calendar hides them all instead of showing them all', () => {
+    const filter = toggleAll([], ALL);
+    expect(filter).toEqual(NONE);
+    expect(isCalendarFilterNone(filter)).toBe(true);
+    for (const id of ALL) expect(isCalendarShown(filter, id)).toBe(false);
+  });
+
+  it('a lone calendar can be unchecked', () => {
+    expect(toggleCalendarInFilter([], 'cal-work', ['cal-work'])).toEqual(NONE);
+  });
+
+  it('checking one calendar from none shows only that calendar', () => {
+    const filter = toggleCalendarInFilter(NONE, 'cal-home', ALL);
+    expect(filter).toEqual(['cal-home']);
+    expect(ALL.filter(id => isCalendarShown(filter, id))).toEqual(['cal-home']);
+  });
+
+  it('checking every calendar again collapses to show-all', () => {
+    expect(toggleAll(NONE, ALL)).toEqual([]);
+    expect(toggleCalendarInFilter(['cal-work', 'cal-home'], 'cal-holidays', ALL)).toEqual([]);
+  });
+
+  it('partial selections behave as before', () => {
+    expect(toggleCalendarInFilter([], 'cal-work', ALL)).toEqual(['cal-home', 'cal-holidays']);
+    expect(toggleCalendarInFilter(['cal-home', 'cal-holidays'], 'cal-home', ALL)).toEqual(['cal-holidays']);
+  });
+
+  it('newly discovered calendars stay hidden when every calendar is hidden', () => {
+    expect(extendCalendarFilter(NONE, ['cal-new'])).toBe(NONE);
+    expect(extendCalendarFilter([], ['cal-new'])).toEqual([]);
+    expect(extendCalendarFilter(['cal-work'], ['cal-new', 'cal-work'])).toEqual(['cal-work', 'cal-new']);
+  });
+
+  it('the hide-all filter produces no tasks where events become tasks', () => {
+    const results = [[ev(), ev({ id: 'XYZ', calendarId: 'cal-home' })]];
+    const dates = ['2026-06-22'];
+    expect(nativeResultsToTasks(results, dates, { calendarFilter: NONE }).tasks).toEqual([]);
+    expect(nativeResultsToTasks(results, dates, { calendarFilter: [] }).tasks).toHaveLength(2);
+    expect(nativeResultsToTasks(results, dates, { calendarFilter: ['cal-home'] }).tasks.map(t => t.nativeEventId)).toEqual(['XYZ']);
   });
 });

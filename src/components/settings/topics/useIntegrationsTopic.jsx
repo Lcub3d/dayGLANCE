@@ -13,7 +13,7 @@ import DirectAccessFileRow from '../../DirectAccessFileRow.jsx';
 import { isDirectAccessSupported } from '../../../sync/directAccessTransport.js';
 import useDirectAccessStatus from '../../../hooks/useDirectAccessStatus.js';
 import { isNativeAndroid, isNativeApp, nativePickVault, nativeGetCalendars, nativeGetAutomationIntentsEnabled, nativeSetAutomationIntentsEnabled } from '../../../native.js';
-import { hasNativeCalendar, electronCalendarAvailable, electronGetCalendars } from '../../../utils/nativeCalendar.js';
+import { hasNativeCalendar, electronCalendarAvailable, electronGetCalendars, CALENDAR_FILTER_NONE, isCalendarFilterNone, isCalendarShown, toggleCalendarInFilter } from '../../../utils/nativeCalendar.js';
 import { isFileSystemAccessSupported, requestVaultAccess, disconnectVault, formatDatePattern } from '../../../obsidian.js';
 import { validateDailyNotePattern, validateVaultFolderSetting } from '../../../utils/obsidianFilename.js';
 import { describeDailyNotePath } from '../../../utils/obsidianFolderCheck.js';
@@ -278,20 +278,27 @@ export default function useIntegrationsTopic({ intentForm, setIntentForm }) {
                   {availableCalendars.length === 0 ? (
                     <p className={`text-xs ${textSecondary}`}>{t('settings.noDeviceCalendars', { defaultValue: 'No calendars loaded — tap Refresh, or rebuild the app if this persists.' })}</p>
                   ) : (<>
-                    <p className={`text-xs ${textSecondary}`}>{t('settings.deviceCalendarFilterHint', { defaultValue: 'Uncheck to hide calendars. Leave all checked to show everything.' })}</p>
+                    <p className={`text-xs ${textSecondary}`}>{t('settings.deviceCalendarFilterHint', { defaultValue: 'Uncheck a calendar to hide its events. Uncheck all to hide every device calendar.' })}</p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setCalendarFilter([])}
+                        disabled={calendarFilter.length === 0}
+                        className={`text-xs ${textSecondary} underline disabled:opacity-50 disabled:no-underline`}
+                      >{t('settings.deviceCalendarsShowAll', { defaultValue: 'Show all' })}</button>
+                      <button
+                        onClick={() => setCalendarFilter([CALENDAR_FILTER_NONE])}
+                        disabled={isCalendarFilterNone(calendarFilter)}
+                        className={`text-xs ${textSecondary} underline disabled:opacity-50 disabled:no-underline`}
+                      >{t('settings.deviceCalendarsHideAll', { defaultValue: 'Hide all' })}</button>
+                    </div>
                     {availableCalendars.map(cal => {
-                      const isChecked = calendarFilter.length === 0 || calendarFilter.includes(cal.id);
+                      const isChecked = isCalendarShown(calendarFilter, cal.id);
                       return (
                         <label key={cal.id} className={`flex items-center gap-2 text-sm ${textPrimary} cursor-pointer`}>
                           <input
                             type="checkbox"
                             checked={isChecked}
-                            onChange={() => setCalendarFilter(prev => {
-                              if (prev.length === 0) return availableCalendars.map(c => c.id).filter(id => id !== cal.id);
-                              if (prev.includes(cal.id)) return prev.filter(id => id !== cal.id);
-                              const next = [...prev, cal.id];
-                              return next.length === availableCalendars.length ? [] : next;
-                            })}
+                            onChange={() => setCalendarFilter(prev => toggleCalendarInFilter(prev, cal.id, availableCalendars.map(c => c.id)))}
                             className="rounded accent-blue-500"
                           />
                           <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cal.color }} />

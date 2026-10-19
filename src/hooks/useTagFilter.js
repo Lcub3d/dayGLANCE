@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { writeItem } from '../utils/storageWrites.js';
 
 const useTagFilter = () => {
   const [selectedTags, setSelectedTags] = useState(() => {
@@ -13,12 +14,12 @@ const useTagFilter = () => {
 
   // Persist selectedTags to localStorage
   useEffect(() => {
-    localStorage.setItem('day-planner-selected-tags', JSON.stringify(selectedTags));
+    writeItem('day-planner-selected-tags', JSON.stringify(selectedTags));
   }, [selectedTags]);
 
   // Persist showUntagged to localStorage
   useEffect(() => {
-    localStorage.setItem('day-planner-show-untagged', JSON.stringify(showUntagged));
+    writeItem('day-planner-show-untagged', JSON.stringify(showUntagged));
   }, [showUntagged]);
 
   // Close tag filter on ESC and blur the trigger button

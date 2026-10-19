@@ -706,7 +706,9 @@
     "beta": "Bêta",
     "calDAVSyncHint": "Pour resynchroniser les tâches terminées : l'URL de la collection CalDAV (sans ?export). Dans Nextcloud, l'identifiant du calendrier dans l'URL peut différer du nom affiché.",
     "deviceCalendarDescription": "Les événements sont lus depuis les comptes de votre appareil. Utilisez la section Calendriers de l'appareil ci-dessous pour choisir ceux à afficher.",
-    "deviceCalendarFilterHint": "Décochez un calendrier pour le masquer. Si tous sont cochés ou décochés, tout est affiché.",
+    "deviceCalendarFilterHint": "Décochez un calendrier pour masquer ses événements. Décochez-les tous pour masquer tous les calendriers de l'appareil.",
+    "deviceCalendarsShowAll": "Tout afficher",
+    "deviceCalendarsHideAll": "Tout masquer",
     "glanceEncryptEvents": "Chiffrer les événements d'intents",
     "glanceEncryptionEnabledHint": "Utilise votre phrase secrète de synchronisation cloud. À configurer une seule fois ; reste actif d'une session à l'autre.",
     "glanceEncryptionRequiredHint": "Activez d'abord le chiffrement de la synchronisation cloud.",
@@ -1366,7 +1368,13 @@
     "importedCalendarEvents": "Événements de calendrier importés",
     "title": "Répartition du stockage",
     "todoistReceipts": "Opérations Todoist en attente",
-    "total": "Stockage local : {{used}} / ~5 Mo ({{percent}} %)"
+    "total": "Stockage local : {{used}} / ~5 Mo ({{percent}} %)",
+    "loadFailedTitle": "Certaines données enregistrées n'ont pas pu être lues.",
+    "loadFailedBody": "dayGLANCE ne les écrasera pas, donc les modifications de ces données ne sont pas enregistrées. Téléchargez une copie, restaurez une sauvegarde ou supprimez-les.",
+    "loadFailedDownload": "Télécharger une copie",
+    "loadFailedDiscard": "Supprimer",
+    "loadFailedDiscardConfirm": "Supprimer les données illisibles ? Vos données actuelles seront enregistrées par-dessus, et c'est irréversible. Téléchargez d'abord une copie si vous pourriez en avoir besoin.",
+    "seeWhatIsUsingSpace": "Voir ce qui occupe l'espace"
   },
   "weeklyReview": {
     "tasksDone": "Tâches terminées",

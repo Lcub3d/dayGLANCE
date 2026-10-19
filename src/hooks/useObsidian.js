@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { OBSIDIAN_LAUNCH_ON_WRITE_KEY } from '../utils/obsidianLaunchOnWrite.js';
+import { writeItem } from '../utils/storageWrites.js';
 
 const useObsidian = () => {
   const [obsidianConfig, setObsidianConfig] = useState(() => {
@@ -58,13 +59,13 @@ const useObsidian = () => {
   });
 
   useEffect(() => {
-    localStorage.setItem('day-planner-obsidian-completion-dates', JSON.stringify(obsidianCompletionDates));
+    writeItem('day-planner-obsidian-completion-dates', JSON.stringify(obsidianCompletionDates));
   }, [obsidianCompletionDates]);
 
   // Persist Obsidian config
   useEffect(() => {
     if (obsidianConfig) {
-      localStorage.setItem('day-planner-obsidian-config', JSON.stringify(obsidianConfig));
+      writeItem('day-planner-obsidian-config', JSON.stringify(obsidianConfig));
     } else {
       localStorage.removeItem('day-planner-obsidian-config');
     }
@@ -74,7 +75,7 @@ const useObsidian = () => {
   // platform-default change reaches devices that never made an explicit choice)
   useEffect(() => {
     if (obsidianLaunchOnWrite === 'on' || obsidianLaunchOnWrite === 'off') {
-      localStorage.setItem(OBSIDIAN_LAUNCH_ON_WRITE_KEY, obsidianLaunchOnWrite);
+      writeItem(OBSIDIAN_LAUNCH_ON_WRITE_KEY, obsidianLaunchOnWrite);
     } else {
       localStorage.removeItem(OBSIDIAN_LAUNCH_ON_WRITE_KEY);
     }

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { writeItem } from '../utils/storageWrites.js';
 
 const useAudio = () => {
   const [soundEnabled, setSoundEnabled] = useState(() => {
@@ -9,7 +10,7 @@ const useAudio = () => {
 
   // Persist soundEnabled to localStorage
   useEffect(() => {
-    localStorage.setItem('day-planner-sound-enabled', JSON.stringify(soundEnabled));
+    writeItem('day-planner-sound-enabled', JSON.stringify(soundEnabled));
   }, [soundEnabled]);
 
   const getAudioCtx = () => {

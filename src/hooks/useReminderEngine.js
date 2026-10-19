@@ -9,6 +9,7 @@ import { isNativeAndroid, isNativeApp, nativeShowNotification, nativeShowTaskNot
 // The tray popup runs the same App tree — skip the reminder engine there so
 // sounds and notifications don't fire twice (once per renderer process).
 import { isTrayMode } from '../utils/trayMode.js';
+import { writeItem } from '../utils/storageWrites.js';
 
 // Pure local helpers
 const timeToMinutes = (time) => {
@@ -114,7 +115,7 @@ export default function useReminderEngine({
         // Play sound + browser notification only on initial fire
         if (lastWeeklyReviewFiredRef.current !== isoWeek) {
           lastWeeklyReviewFiredRef.current = isoWeek;
-          localStorage.setItem('day-planner-weekly-review-fired', isoWeek);
+          writeItem('day-planner-weekly-review-fired', isoWeek);
           playUISound('reminder');
           if (reminderSettings.browserNotifications && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
             if (window.electronAPI?.isElectron) {

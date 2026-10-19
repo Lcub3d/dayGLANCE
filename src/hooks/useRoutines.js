@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { dateToString } from '../utils/taskUtils.js';
 import { markBookkeepingChange } from '../utils/localEditStamp.js';
+import { writeItem } from '../utils/storageWrites.js';
 
 // Local midnight (00:00:00) of the current day, as an ISO instant. This is the
 // moment routine completions "reset" each day, and the timestamp used to stamp
@@ -164,12 +165,12 @@ const useRoutines = ({ currentTime, onboardingProgress, setOnboardingProgress, h
 
   // Persist completions to localStorage
   useEffect(() => {
-    localStorage.setItem('day-planner-routine-completions', JSON.stringify(routineCompletions));
+    writeItem('day-planner-routine-completions', JSON.stringify(routineCompletions));
   }, [routineCompletions]);
 
   // Persist completion timestamps (the sync LWW key) alongside the completions.
   useEffect(() => {
-    localStorage.setItem('day-planner-routine-completion-timestamps', JSON.stringify(routineCompletionTimestamps));
+    writeItem('day-planner-routine-completion-timestamps', JSON.stringify(routineCompletionTimestamps));
   }, [routineCompletionTimestamps]);
 
   // Auto-clear today's routines on day rollover
@@ -194,7 +195,7 @@ const useRoutines = ({ currentTime, onboardingProgress, setOnboardingProgress, h
       if (todayRoutines.length > 0) {
         const withCleared = rolloverRemovedTodayRoutineIds(removedTodayRoutineIds, todayRoutines, midnightIso);
         setRemovedTodayRoutineIds(withCleared);
-        localStorage.setItem('day-planner-removed-today-routine-ids', JSON.stringify(withCleared));
+        writeItem('day-planner-removed-today-routine-ids', JSON.stringify(withCleared));
       }
       setTodayRoutines([]);
       setRoutinesDate(todayStr);

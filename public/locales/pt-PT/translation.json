@@ -1366,7 +1366,12 @@
     "importedCalendarEvents": "Eventos de calendário importados",
     "title": "Detalhes do armazenamento",
     "todoistReceipts": "Operações pendentes do Todoist",
-    "total": "Armazenamento local: {{used}} / ~5 MB ({{percent}}%)"
+    "total": "Armazenamento local: {{used}} / ~5 MB ({{percent}}%)",
+    "loadFailedTitle": "Não foi possível ler alguns dados guardados.",
+    "loadFailedBody": "O dayGLANCE não os vai substituir, por isso as alterações a esses dados não estão a ser guardadas. Transfira uma cópia, restaure uma cópia de segurança ou descarte-os.",
+    "loadFailedDownload": "Transferir uma cópia",
+    "loadFailedDiscard": "Descartar",
+    "loadFailedDiscardConfirm": "Descartar os dados ilegíveis? Os seus dados atuais serão guardados por cima, e isto não pode ser anulado. Transfira primeiro uma cópia, se puder precisar dela."
   },
   "weeklyReview": {
     "tasksDone": "Tarefas concluídas",

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNotifyTrayOnChange } from '../utils/trayNotify.js';
 import { isTrayMode } from '../utils/trayMode.js';
+import { isLoadProtected } from '../utils/loadFailures.js';
 
 export default function useLocalStoragePersist({
   minimizedSections,
@@ -71,6 +72,9 @@ export default function useLocalStoragePersist({
 
   // Persist dailyNotes to localStorage and trigger cloud sync upload
   useEffect(() => {
+    // Unreadable notes are not empty notes: this state never saw them, so it
+    // must not be written over them (utils/loadFailures.js, #2138).
+    if (isLoadProtected('day-planner-daily-notes')) return;
     localStorage.setItem('day-planner-daily-notes', JSON.stringify(dailyNotes));
     if (!suppressCloudUploadRef.current && (!cloudSyncConfig?.enabled || cloudSyncInitialDoneRef.current)) {
       localStorage.setItem('day-planner-cloud-sync-local-modified', new Date().toISOString());

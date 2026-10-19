@@ -61,6 +61,7 @@ import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLoca
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
 import { planFrameNudge, resolveFrameNudgeAnswer } from './utils/frameNudge.js';
 import { getOverdueTasks as collectOverdueTasks } from './utils/getOverdueTasks.js';
+import { recordLoadFailure } from './utils/loadFailures.js';
 import { parseICS, parseDatetime, filterByDateWindow, expandMultiDayEvent } from './utils/icsParser.js';
 import { buildCalendarProxyUrl } from './utils/calendarProxyUrl.js';
 import { absorbCalendarDays, absorbCalendarWindow, readCalendarProjectionCache, writeCalendarProjectionCache } from './utils/calendarProjectionCache.js';
@@ -234,6 +235,7 @@ import BucketListModal from './components/BucketListModal.jsx';
 import HabitModal from './components/HabitModal.jsx';
 import SubscriptionWall from './components/SubscriptionWall.jsx';
 import ReviewerBanner from './components/ReviewerBanner.jsx';
+import LoadFailureBanner from './components/LoadFailureBanner.jsx';
 import { useSubscription } from './hooks/useSubscription.js';
 import { useTranslation } from 'react-i18next';
 import { formatDuration } from './utils/formatDuration.js';
@@ -1046,10 +1048,16 @@ const DayPlanner = () => {
   const [spaceCardSize, setSpaceCardSizeState] = useState(() => readCardSize());
   const setSpaceCardSize = useCallback((id) => setSpaceCardSizeState(writeCardSize(id)), []);
   const [dailyNotes, setDailyNotes] = useState(() => {
+    let saved = null;
     try {
-      const saved = localStorage.getItem('day-planner-daily-notes');
+      saved = localStorage.getItem('day-planner-daily-notes');
       return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
+    } catch (error) {
+      // Unreadable is not empty: record it so the notes persist effect does not
+      // write this {} over the stored copy on mount (utils/loadFailures.js).
+      if (saved !== null) recordLoadFailure('day-planner-daily-notes', error, saved);
+      return {};
+    }
   });
   const localizedDailyNoteTemplate = buildLocalizedDailyNoteTemplate(t);
   const localizedTaskHeading = buildLocalizedTaskHeading(t);
@@ -4612,14 +4620,16 @@ const DayPlanner = () => {
       }
     };
 
-    const filename = `dayglance-backup-${dateToString(new Date())}.json`;
-    const jsonStr = JSON.stringify(backup, null, 2);
+    exportJsonFile(`dayglance-backup-${dateToString(new Date())}.json`, JSON.stringify(backup, null, 2));
+  };
 
-    // In both native WebViews the <a download> trick is silently ignored
-    // (Android WebView has no DownloadListener; WKWebView never handles blob
-    // downloads). Use the native share sheet instead so the user can save to
-    // Files / Drive. A null result means the share sheet was dismissed or the
-    // bridge is missing — dismissal is a cancel, but success:false is an error.
+  // Hand a JSON file to the user. In both native WebViews the <a download>
+  // trick is silently ignored (Android WebView has no DownloadListener;
+  // WKWebView never handles blob downloads). Use the native share sheet
+  // instead so the user can save to Files / Drive. A null result means the
+  // share sheet was dismissed or the bridge is missing — dismissal is a
+  // cancel, but success:false is an error.
+  const exportJsonFile = (filename, jsonStr) => {
     if (isNativeApp()) {
       const result = nativeShareFile(filename, jsonStr);
       if (result && result.success === false) {
@@ -10137,6 +10147,11 @@ const DayPlanner = () => {
       {isReviewerUnlocked && (
         <ReviewerBanner darkMode={darkMode} onExit={exitReviewerMode} />
       )}
+
+      {/* Saved data that could not be read at load (#2138): persistent until
+          it is repaired, downloaded and discarded. The save pass leaves those
+          keys alone meanwhile (utils/loadFailures.js). The tray never saves. */}
+      {!isTrayMode && <LoadFailureBanner darkMode={darkMode} onDownload={exportJsonFile} />}
 
       {/* Subscription wall — shown on Android, iOS, and macOS when subscription is inactive.
           In dev builds, ?wall in the URL forces it visible for local testing. */}

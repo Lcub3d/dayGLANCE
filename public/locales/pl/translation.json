@@ -1399,7 +1399,12 @@
     "importedCalendarEvents": "Zaimportowane wydarzenia kalendarza",
     "title": "Zużycie pamięci",
     "todoistReceipts": "Oczekujące operacje Todoist",
-    "total": "Pamięć lokalna: {{used}} / ~5 MB ({{percent}}%)"
+    "total": "Pamięć lokalna: {{used}} / ~5 MB ({{percent}}%)",
+    "loadFailedTitle": "Nie udało się odczytać części zapisanych danych.",
+    "loadFailedBody": "dayGLANCE ich nie nadpisze, więc zmiany w tych danych nie są zapisywane. Pobierz kopię, przywróć kopię zapasową lub je odrzuć.",
+    "loadFailedDownload": "Pobierz kopię",
+    "loadFailedDiscard": "Odrzuć",
+    "loadFailedDiscardConfirm": "Odrzucić nieczytelne dane? Twoje bieżące dane zostaną zapisane w ich miejsce i nie da się tego cofnąć. Najpierw pobierz kopię, jeśli może się przydać."
   },
   "weeklyReview": {
     "tasksDone": "Wykonane zadania",

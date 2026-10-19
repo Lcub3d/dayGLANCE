@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { writeItem } from '../utils/storageWrites.js';
 
 const useOnboarding = () => {
   // Onboarding state - start false, set true after data loads if zero tasks
@@ -29,12 +30,12 @@ const useOnboarding = () => {
 
   useEffect(() => {
     if (gettingStartedDismissed) {
-      localStorage.setItem('gettingStartedDismissed', 'true');
+      writeItem('gettingStartedDismissed', 'true');
     }
   }, [gettingStartedDismissed]);
 
   useEffect(() => {
-    localStorage.setItem('onboardingProgress', JSON.stringify(onboardingProgress));
+    writeItem('onboardingProgress', JSON.stringify(onboardingProgress));
   }, [onboardingProgress]);
 
   return {

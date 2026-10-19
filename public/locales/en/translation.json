@@ -1371,7 +1371,8 @@
     "loadFailedBody": "dayGLANCE won't save over it, so changes to that data aren't being saved. Download a copy, restore a backup, or discard it.",
     "loadFailedDownload": "Download a copy",
     "loadFailedDiscard": "Discard",
-    "loadFailedDiscardConfirm": "Discard the unreadable data? Your current data will be saved over it, and this can't be undone. Download a copy first if you might need it."
+    "loadFailedDiscardConfirm": "Discard the unreadable data? Your current data will be saved over it, and this can't be undone. Download a copy first if you might need it.",
+    "seeWhatIsUsingSpace": "See what's using space"
   },
   "weeklyReview": {
     "tasksDone": "Tasks done",

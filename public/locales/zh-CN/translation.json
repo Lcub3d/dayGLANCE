@@ -1371,7 +1371,8 @@
     "loadFailedBody": "dayGLANCE 不会覆盖这些数据，因此对这些数据的更改目前不会被保存。请下载一份副本、恢复备份，或丢弃这些数据。",
     "loadFailedDownload": "下载副本",
     "loadFailedDiscard": "丢弃",
-    "loadFailedDiscardConfirm": "要丢弃无法读取的数据吗？当前数据将覆盖保存，且无法撤销。如果之后可能需要，请先下载一份副本。"
+    "loadFailedDiscardConfirm": "要丢弃无法读取的数据吗？当前数据将覆盖保存，且无法撤销。如果之后可能需要，请先下载一份副本。",
+    "seeWhatIsUsingSpace": "查看占用空间的内容"
   },
   "weeklyReview": {
     "tasksDone": "已完成任务",

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { isNativeAndroid, nativeShowFocusTimerNotification, nativeDismissFocusTimerNotification, nativeGetFocusPendingAction } from '../native.js';
+import { writeItem } from '../utils/storageWrites.js';
 
 const useFocusMode = ({ onTimerTransition } = {}) => {
   const [showFocusMode, setShowFocusMode] = useState(false);
@@ -47,7 +48,7 @@ const useFocusMode = ({ onTimerTransition } = {}) => {
 
   // Persist focusLog to localStorage
   useEffect(() => {
-    localStorage.setItem('day-planner-focus-log', JSON.stringify(focusLog));
+    writeItem('day-planner-focus-log', JSON.stringify(focusLog));
   }, [focusLog]);
 
   // Focus Mode timer tick — runs the interval while the timer is active; the

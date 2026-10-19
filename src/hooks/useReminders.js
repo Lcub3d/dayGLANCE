@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { writeItem } from '../utils/storageWrites.js';
 
 const STORAGE_KEY = 'day-planner-reminder-settings';
 
@@ -35,7 +36,7 @@ export default function useReminders() {
 
   // Persist reminderSettings to localStorage
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(reminderSettings));
+    writeItem(STORAGE_KEY, JSON.stringify(reminderSettings));
   }, [reminderSettings]);
 
   const applyReminderPreset = (name) => {

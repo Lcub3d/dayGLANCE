@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { TASK_COLORS } from '../utils/colorUtils.js';
+import { writeItem } from '../utils/storageWrites.js';
 
 /**
  * The legacy `setShowGoalsDashboard(value)` maps onto the desktop space: true
@@ -87,8 +88,8 @@ const useGoalsProjects = () => {
   const [goalsViewMode, setGoalsViewMode] = useState(
     () => localStorage.getItem('day-planner-goals-view-mode') || 'list'
   );
-  useEffect(() => { localStorage.setItem('day-planner-goals-area-filter', goalsAreaFilter); }, [goalsAreaFilter]);
-  useEffect(() => { localStorage.setItem('day-planner-goals-view-mode', goalsViewMode); }, [goalsViewMode]);
+  useEffect(() => { writeItem('day-planner-goals-area-filter', goalsAreaFilter); }, [goalsAreaFilter]);
+  useEffect(() => { writeItem('day-planner-goals-view-mode', goalsViewMode); }, [goalsViewMode]);
 
   // ── Goal CRUD ────────────────────────────────────────────────────────────────
 

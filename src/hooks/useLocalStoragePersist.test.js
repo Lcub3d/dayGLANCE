@@ -205,3 +205,28 @@ describe('useLocalStoragePersist leaves unreadable daily notes alone', () => {
     expect(globalThis.localStorage.setItem).toHaveBeenCalledWith('day-planner-daily-notes', '{}');
   });
 });
+
+// #2139: a quota error thrown from an effect reached the app-wide
+// ErrorBoundary and replaced the whole app with the crash screen.
+describe('useLocalStoragePersist at quota', () => {
+  beforeEach(() => {
+    effects.length = 0;
+    globalThis.localStorage = {
+      setItem: vi.fn(() => { throw Object.assign(new Error('quota'), { name: 'QuotaExceededError' }); }),
+      getItem: vi.fn(() => null),
+      removeItem: vi.fn(),
+    };
+    globalThis.window = {};
+  });
+  afterEach(() => { delete globalThis.localStorage; delete globalThis.window; vi.restoreAllMocks(); });
+
+  it('no persist effect throws, and the full store is recorded for the banner', async () => {
+    vi.resetModules();
+    const { default: persist } = await import('./useLocalStoragePersist.js');
+    const { getWriteFailures } = await import('../utils/storageWrites.js');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    persist(baseProps());
+    expect(mount).not.toThrow();
+    expect(getWriteFailures()).toContain('day-planner-daily-notes');
+  });
+});

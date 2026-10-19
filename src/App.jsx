@@ -235,7 +235,7 @@ import BucketListModal from './components/BucketListModal.jsx';
 import HabitModal from './components/HabitModal.jsx';
 import SubscriptionWall from './components/SubscriptionWall.jsx';
 import ReviewerBanner from './components/ReviewerBanner.jsx';
-import LoadFailureBanner from './components/LoadFailureBanner.jsx';
+import StorageBanner from './components/StorageBanner.jsx';
 import { useSubscription } from './hooks/useSubscription.js';
 import { useTranslation } from 'react-i18next';
 import { formatDuration } from './utils/formatDuration.js';
@@ -247,6 +247,7 @@ import { weekViewDatesFor } from './utils/weekViewDates.js';
 import { dayViewColumnsFor } from './utils/dayViewColumns.js';
 import { schedRollingWindow } from './utils/schedAgenda.js';
 import useTrayPopupVisible from './hooks/useTrayPopupVisible.js';
+import { writeItem } from './utils/storageWrites.js';
 
 // Encode a string that may contain non-ASCII characters as Base64.
 // btoa() throws InvalidCharacterError for codepoints > 255 (CJK, emoji, etc.).
@@ -393,7 +394,7 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-jobo-enabled');
     return saved !== null ? JSON.parse(saved) === true : false;
   });
-  useEffect(() => { localStorage.setItem('day-planner-jobo-enabled', JSON.stringify(joboEnabled)); }, [joboEnabled]);
+  useEffect(() => { writeItem('day-planner-jobo-enabled', JSON.stringify(joboEnabled)); }, [joboEnabled]);
   // Aspire (life planning: wish list, five-year vision, mottos) — placeholder
   // behind the same Experimental switch pattern; the FAB lives in the Goals &
   // Projects space.
@@ -401,7 +402,7 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-aspire-enabled');
     return saved !== null ? JSON.parse(saved) === true : false;
   });
-  useEffect(() => { localStorage.setItem('day-planner-aspire-enabled', JSON.stringify(aspireEnabled)); }, [aspireEnabled]);
+  useEffect(() => { writeItem('day-planner-aspire-enabled', JSON.stringify(aspireEnabled)); }, [aspireEnabled]);
   const [storedHiddenViews, setHiddenViews] = useState(() => {
     const saved = localStorage.getItem('day-planner-hidden-views');
     try { return normalizeHiddenViews(saved ? JSON.parse(saved) : null); } catch { return normalizeHiddenViews(null); }
@@ -646,7 +647,7 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-inbox-auto-archive-days');
     return saved !== null ? JSON.parse(saved) : 14;
   });
-  useEffect(() => { localStorage.setItem('day-planner-inbox-auto-archive-days', JSON.stringify(inboxAutoArchiveDays)); }, [inboxAutoArchiveDays]);
+  useEffect(() => { writeItem('day-planner-inbox-auto-archive-days', JSON.stringify(inboxAutoArchiveDays)); }, [inboxAutoArchiveDays]);
   // Live Activity (iOS): OPT-IN, default off — the compact island widens the
   // sensor housing enough to hide the cellular/wifi status icons, so an
   // all-day ambient activity must be the user's choice. Device-local (not
@@ -655,22 +656,22 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-live-activity');
     return saved !== null ? JSON.parse(saved) : false;
   });
-  useEffect(() => { localStorage.setItem('day-planner-live-activity', JSON.stringify(liveActivityEnabled)); }, [liveActivityEnabled]);
+  useEffect(() => { writeItem('day-planner-live-activity', JSON.stringify(liveActivityEnabled)); }, [liveActivityEnabled]);
   const [weekStartDay, setWeekStartDay] = useState(() => {
     const saved = localStorage.getItem('day-planner-week-start-day');
     return saved !== null ? JSON.parse(saved) : defaultWeekStartDay(); // 0=Sunday, 1=Monday
   });
-  useEffect(() => { localStorage.setItem('day-planner-week-start-day', JSON.stringify(weekStartDay)); }, [weekStartDay]);
+  useEffect(() => { writeItem('day-planner-week-start-day', JSON.stringify(weekStartDay)); }, [weekStartDay]);
   const [homeTimezone, setHomeTimezone] = useState(() => {
     const saved = localStorage.getItem('day-planner-home-timezone');
     return saved || Intl.DateTimeFormat().resolvedOptions().timeZone;
   });
-  useEffect(() => { localStorage.setItem('day-planner-home-timezone', homeTimezone); }, [homeTimezone]);
+  useEffect(() => { writeItem('day-planner-home-timezone', homeTimezone); }, [homeTimezone]);
   const [weekTimelineStartHour, setWeekTimelineStartHour] = useState(() => {
     const saved = localStorage.getItem('day-planner-week-timeline-start-hour');
     return saved !== null ? JSON.parse(saved) : 0;
   });
-  useEffect(() => { localStorage.setItem('day-planner-week-timeline-start-hour', JSON.stringify(weekTimelineStartHour)); }, [weekTimelineStartHour]);
+  useEffect(() => { writeItem('day-planner-week-timeline-start-hour', JSON.stringify(weekTimelineStartHour)); }, [weekTimelineStartHour]);
   // The matching upper bound. 24 means "no trim", which is the default: WEEK has
   // always drawn the whole day, and trimming it is opt-in exactly as the start
   // hour is. Together they are what make a WEEK row tall enough to read — the
@@ -680,7 +681,7 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-week-timeline-end-hour');
     return saved !== null ? JSON.parse(saved) : 24;
   });
-  useEffect(() => { localStorage.setItem('day-planner-week-timeline-end-hour', JSON.stringify(weekTimelineEndHour)); }, [weekTimelineEndHour]);
+  useEffect(() => { writeItem('day-planner-week-timeline-end-hour', JSON.stringify(weekTimelineEndHour)); }, [weekTimelineEndHour]);
   const { weather, setWeather, weatherZip, setWeatherZip, weatherTempUnit, setWeatherTempUnit, fetchWeather } = useWeather();
   const [weatherEnabled, setWeatherEnabled] = useState(() => {
     const saved = localStorage.getItem('day-planner-weather-enabled');
@@ -690,8 +691,8 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-daily-content-enabled');
     return saved !== null ? JSON.parse(saved) : true;
   });
-  useEffect(() => { localStorage.setItem('day-planner-weather-enabled', JSON.stringify(weatherEnabled)); }, [weatherEnabled]);
-  useEffect(() => { localStorage.setItem('day-planner-daily-content-enabled', JSON.stringify(dailyContentEnabled)); }, [dailyContentEnabled]);
+  useEffect(() => { writeItem('day-planner-weather-enabled', JSON.stringify(weatherEnabled)); }, [weatherEnabled]);
+  useEffect(() => { writeItem('day-planner-daily-content-enabled', JSON.stringify(dailyContentEnabled)); }, [dailyContentEnabled]);
   const [syncUrl, setSyncUrl] = useState('');
   // When multi-user is on, whether to include CalDAV credentials (not just URLs)
   // in the per-user calendar config that syncs across this user's devices. Only
@@ -873,7 +874,7 @@ const DayPlanner = () => {
     catch { return normalizeBucketConfig(null); }
   });
   useEffect(() => {
-    localStorage.setItem('day-planner-bucket-config', JSON.stringify(bucketConfig));
+    writeItem('day-planner-bucket-config', JSON.stringify(bucketConfig));
   }, [bucketConfig]);
   const updateBucketConfig = (patch) =>
     setBucketConfig(prev => normalizeBucketConfig({ ...prev, ...patch, updatedAt: new Date().toISOString() }));
@@ -1539,6 +1540,7 @@ const DayPlanner = () => {
     pushUndo,
     setTasks, setUnscheduledTasks,
     playUISound,
+    onStorageFull: () => setUndoToast({ message: t('backup.storageFull'), kind: 'warning' }),
   });
 
   // AI configuration, voice input, and weekly review state
@@ -2140,7 +2142,7 @@ const DayPlanner = () => {
 
   // Persist darkMode to localStorage and update theme-color meta tag
   useEffect(() => {
-    localStorage.setItem('day-planner-darkmode', JSON.stringify(darkMode));
+    writeItem('day-planner-darkmode', JSON.stringify(darkMode));
     document.documentElement.classList.toggle('dark', darkMode);
     document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
     document.documentElement.style.backgroundColor = darkMode ? '#1f2937' : '#ffffff';
@@ -2156,22 +2158,22 @@ const DayPlanner = () => {
   }, [darkMode]);
 
   useEffect(() => {
-    localStorage.setItem('day-planner-view-mode', JSON.stringify(viewMode));
+    writeItem('day-planner-view-mode', JSON.stringify(viewMode));
   }, [viewMode]);
 
   useEffect(() => {
-    localStorage.setItem('day-planner-default-view', JSON.stringify(defaultView));
+    writeItem('day-planner-default-view', JSON.stringify(defaultView));
   }, [defaultView]);
 
   useEffect(() => {
-    localStorage.setItem('day-planner-hidden-views', JSON.stringify(storedHiddenViews));
+    writeItem('day-planner-hidden-views', JSON.stringify(storedHiddenViews));
   }, [storedHiddenViews]);
 
   useEffect(() => {
-    localStorage.setItem('day-planner-day-view-mode', JSON.stringify(dayViewMode));
+    writeItem('day-planner-day-view-mode', JSON.stringify(dayViewMode));
   }, [dayViewMode]);
   useEffect(() => {
-    localStorage.setItem('day-planner-week-view-mode', JSON.stringify(weekViewMode));
+    writeItem('day-planner-week-view-mode', JSON.stringify(weekViewMode));
   }, [weekViewMode]);
   // mobileViewMode is deliberately NOT persisted — the session opens in
   // mobileDefaultView (settings picker) and header toggling is ephemeral.
@@ -2179,11 +2181,11 @@ const DayPlanner = () => {
     if (listEndOfDayTime === null) {
       localStorage.removeItem('day-planner-list-end-of-day');
     } else {
-      localStorage.setItem('day-planner-list-end-of-day', listEndOfDayTime);
+      writeItem('day-planner-list-end-of-day', listEndOfDayTime);
     }
   }, [listEndOfDayTime]);
   useEffect(() => {
-    localStorage.setItem('day-planner-glance-page', String(glancePage));
+    writeItem('day-planner-glance-page', String(glancePage));
   }, [glancePage]);
 
   // Clear any stale history state left from a previous session so Android back
@@ -2440,7 +2442,7 @@ const DayPlanner = () => {
     const tombstones = JSON.parse(localStorage.getItem('day-planner-deleted-frame-ids') || '{}');
     const now = new Date().toISOString();
     for (const f of removed) tombstones[String(f.id)] = now;
-    localStorage.setItem('day-planner-deleted-frame-ids', JSON.stringify(tombstones));
+    writeItem('day-planner-deleted-frame-ids', JSON.stringify(tombstones));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gtdFrames]);
 
@@ -2786,7 +2788,7 @@ const DayPlanner = () => {
   const icsCalendarsJson = JSON.stringify(icsCalendars);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { writeConfigTimestamp('day-planner-ics-calendars-updated-at'); }, [icsCalendarsJson]);
-  useEffect(() => { localStorage.setItem('day-planner-sync-calendar-creds', String(syncCalendarCreds)); }, [syncCalendarCreds]);
+  useEffect(() => { writeItem('day-planner-sync-calendar-creds', String(syncCalendarCreds)); }, [syncCalendarCreds]);
 
   // One-time per-device cleanup when this device first runs in per-user calendar
   // mode (multi-user on + a "me" selected). Calendar config and CalDAV-imported
@@ -3013,7 +3015,7 @@ const DayPlanner = () => {
     if (!cloudSyncConfig?.enabled) return;
 
     if (cloudSyncConfig?.syncFolder !== 'dayglance') {
-      localStorage.setItem(CHECKED_KEY, '1');
+      writeItem(CHECKED_KEY, '1');
       return;
     }
 
@@ -3028,8 +3030,8 @@ const DayPlanner = () => {
       const base = cloudSyncConfig.webdavUrl.replace(/\/+$/, '');
       oldFolderPath = `${base}/dayglance/`;
     }
-    if (oldFolderPath) localStorage.setItem(NOTICE_KEY, oldFolderPath);
-    localStorage.setItem(CHECKED_KEY, '1');
+    if (oldFolderPath) writeItem(NOTICE_KEY, oldFolderPath);
+    writeItem(CHECKED_KEY, '1');
     // One-time migration notice (guarded by CHECKED_KEY). Reads the other
     // cloudSyncConfig fields at check time; keyed on enabled + syncFolder.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -10148,10 +10150,17 @@ const DayPlanner = () => {
         <ReviewerBanner darkMode={darkMode} onExit={exitReviewerMode} />
       )}
 
-      {/* Saved data that could not be read at load (#2138): persistent until
-          it is repaired, downloaded and discarded. The save pass leaves those
-          keys alone meanwhile (utils/loadFailures.js). The tray never saves. */}
-      {!isTrayMode && <LoadFailureBanner darkMode={darkMode} onDownload={exportJsonFile} />}
+      {/* Storage that is not keeping the user's data: saved data that could not
+          be read at load (#2138; the save pass leaves those keys alone until
+          repaired or discarded) or writes rejected because storage is full
+          (#2139). Persistent until resolved. The tray never saves. */}
+      {!isTrayMode && (
+        <StorageBanner
+          darkMode={darkMode}
+          onDownload={exportJsonFile}
+          onOpenStorage={() => setShowStorageBreakdown(true)}
+        />
+      )}
 
       {/* Subscription wall — shown on Android, iOS, and macOS when subscription is inactive.
           In dev builds, ?wall in the URL forces it visible for local testing. */}

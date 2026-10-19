@@ -25,6 +25,7 @@ const isSubscriptionImport = (t) =>
 import { isTrayMode } from '../utils/trayMode.js';
 import { repairLoadedGhostRows } from '../utils/obsidianGhostRows.js';
 import { recordLoadFailure, isLoadProtected } from '../utils/loadFailures.js';
+import { writeItem, getWriteFailures } from '../utils/storageWrites.js';
 
 export default function useDataPersistence({
   // setters for loadData
@@ -285,14 +286,11 @@ export default function useDataPersistence({
       // A bucket that failed to load holds data this state never saw; writing
       // state over it is how one corrupt key used to wipe a store (#2138).
       if (isLoadProtected(key)) return;
-      try {
-        localStorage.setItem(key, value);
-      } catch (e) {
-        console.error('Error saving data:', key, e);
-        if (!quotaHit && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
-          quotaHit = true;
-          setUndoToast({ message: t('backup.storageFull'), kind: 'warning' });
-        }
+      // writeItem records a quota failure for the persistent banner (#2139);
+      // the toast is the immediate notice for the action that hit it.
+      if (!writeItem(key, value) && !quotaHit && getWriteFailures().includes(key)) {
+        quotaHit = true;
+        setUndoToast({ message: t('backup.storageFull'), kind: 'warning' });
       }
     };
 

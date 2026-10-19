@@ -1371,7 +1371,8 @@
     "loadFailedBody": "O dayGLANCE não vai sobrescrevê-los, então as alterações nesses dados não estão sendo salvas. Baixe uma cópia, restaure um backup ou descarte-os.",
     "loadFailedDownload": "Baixar uma cópia",
     "loadFailedDiscard": "Descartar",
-    "loadFailedDiscardConfirm": "Descartar os dados ilegíveis? Seus dados atuais serão salvos por cima, e isso não pode ser desfeito. Baixe uma cópia antes, se puder precisar dela."
+    "loadFailedDiscardConfirm": "Descartar os dados ilegíveis? Seus dados atuais serão salvos por cima, e isso não pode ser desfeito. Baixe uma cópia antes, se puder precisar dela.",
+    "seeWhatIsUsingSpace": "Ver o que está ocupando espaço"
   },
   "weeklyReview": {
     "tasksDone": "Tarefas concluídas",

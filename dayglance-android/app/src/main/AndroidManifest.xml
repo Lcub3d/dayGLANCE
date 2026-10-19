@@ -376,6 +376,10 @@
             <intent-filter>
                 <action android:name="com.dayglance.app.launcher.CREATE" />
                 <action android:name="com.dayglance.app.launcher.COMPLETE" />
+                <action android:name="com.dayglance.app.launcher.UNCOMPLETE" />
+                <action android:name="com.dayglance.app.launcher.MOVE" />
+                <action android:name="com.dayglance.app.launcher.RESIZE" />
+                <action android:name="com.dayglance.app.launcher.TOGGLE_ROUTINE" />
             </intent-filter>
         </receiver>
 

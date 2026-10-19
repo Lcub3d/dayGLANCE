@@ -42,19 +42,36 @@ the stamp the launcher shows staleness from.
 
 ## Writes: the launcher receiver
 
-`LauncherIntentReceiver` takes `com.dayglance.app.launcher.CREATE` and
-`com.dayglance.app.launcher.COMPLETE` broadcasts with two String extras:
-`payload`, a JSON object in the automation transport's shape (`title`, `due`,
-`duration`, `all_day`, `deadline`, `tags`, `priority`, `notes`, `project` for
-CREATE; `task_id` and optional `completed_at`, or `title`, for COMPLETE), and
-`clientId`, an id the launcher generates per write. The receiver queues the
+`LauncherIntentReceiver` takes `com.dayglance.app.launcher.<ACTION>` broadcasts
+with two String extras: `payload`, a JSON object, and `clientId`, an id the
+launcher generates per write. The actions and their payloads:
+
+| Action | Payload | Does |
+| --- | --- | --- |
+| `CREATE` | the automation CREATE shape: `title`, `due`, `duration`, `all_day`, `deadline`, `tags`, `priority`, `notes`, `project` | makes a task and stamps `clientId` on it |
+| `COMPLETE` | `task_id` and optional `completed_at`, or `title` | completes the task; a recurring occurrence id (`recurring-<template>-<date>`) marks that date on the series |
+| `UNCOMPLETE` | `task_id` | reopens it, Inbox and recurring occurrences included |
+| `MOVE` | `task_id`, `date` (`YYYY-MM-DD`), optional `start` (`HH:MM`) | an Inbox task is scheduled (it needs `start`; priority and deadline are dropped, as the app's own schedule path does); a block moves to the date and, when given, the time; without `start` an all-day task stays all-day and a timed one keeps its time |
+| `RESIZE` | `task_id`, `duration` (minutes, 5 or more) | changes the block's length |
+| `TOGGLE_ROUTINE` | `routine_id`, optional `date` | flips today's completion of the routine; another date is refused, since completions are kept for today only |
+
+MOVE, RESIZE, COMPLETE and UNCOMPLETE run through the MCP write model's pure
+mutations (`utils/taskMutations.js`), so a calendar event, a device-calendar
+event, a routine block, a CalDAV task and a MOVE or RESIZE of a recurring
+occurrence are refused with the same words the MCP tools use, and a placement
+over a routine is refused rather than slid. Each stamps `lastModified` at the
+write. The receiver queues the
 write in its own slot (several deep, unlike the automation transport's single
 slot) and sends the same package-scoped wake broadcast, so a running app
 drains at once and a dead app on next launch.
 
-The web layer (`src/intents/launcherWrites.js`) handles each write through the
-automation handlers and dedupes on `clientId` with a ledger kept in
-localStorage: a re-sent write is acknowledged, never applied twice. `CREATE`
+The web layer (`src/intents/launcherWrites.js`) dedupes on `clientId` with a
+ledger kept in localStorage: a re-sent write is acknowledged, never applied
+twice. A write that fails for good (an unknown id, a read-only block, a routine
+in the way) is recorded too, with its error, so the launcher sees the id in
+the next snapshot and lets its optimistic change go at once rather than when
+its outbox entry expires; a failed CREATE is the exception, since the launcher
+may correct the payload and re-send. `CREATE`
 stamps `clientId` on the task it made (the field is declared to the sync seams
 like `originalPlan`: stripped from the re-stamp comparison, carried across
 both merge tiers and the apply); `COMPLETE` with `task_id` completes that task
@@ -99,6 +116,13 @@ With the launcher's real digests in `launcher_certs.xml` and both apps installed
    id under `handledWrites`.
 3. A create: the same with `.CREATE` and `--es payload '{"title":"From the
    launcher"}'`; the new task's row carries `"clientId":"test-2"`.
+   Then the gestures: `.MOVE` with `'{"task_id":"<id>","date":"<tomorrow>","start":"09:00"}'`
+   moves the block (query `tasks` again); `.RESIZE` with
+   `'{"task_id":"<id>","duration":60}'`; `.UNCOMPLETE` with `'{"task_id":"<id>"}'`
+   reopens the task completed in step 2; `.TOGGLE_ROUTINE` with
+   `'{"routine_id":"<an id from routines>"}'` flips today's pill. A MOVE of a
+   `recurring-…` id is refused, and `meta.handledWrites` lists that id with its
+   `error`.
 4. Permission: from any app without the permission the query is refused
    with a `SecurityException` and the broadcast is not delivered.
 

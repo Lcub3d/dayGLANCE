@@ -23,7 +23,8 @@ import org.json.JSONObject
  *    layer drains the queue in order (intents/launcherWrites.js) and dedupes
  *    on the id, so a re-sent write is harmless.
  *
- * Actions: `com.dayglance.app.launcher.CREATE` and `.COMPLETE` (first cut).
+ * Actions: `com.dayglance.app.launcher.CREATE`, `.COMPLETE`, `.UNCOMPLETE`, `.MOVE`,
+ * `.RESIZE` and `.TOGGLE_ROUTINE`.
  */
 class LauncherIntentReceiver : BroadcastReceiver() {
 
@@ -57,6 +58,10 @@ class LauncherIntentReceiver : BroadcastReceiver() {
         private const val TAG = "LauncherIntents"
         const val ACTION_CREATE = "com.dayglance.app.launcher.CREATE"
         const val ACTION_COMPLETE = "com.dayglance.app.launcher.COMPLETE"
-        val ACTIONS = setOf(ACTION_CREATE, ACTION_COMPLETE)
+        const val ACTION_UNCOMPLETE = "com.dayglance.app.launcher.UNCOMPLETE"
+        const val ACTION_MOVE = "com.dayglance.app.launcher.MOVE"
+        const val ACTION_RESIZE = "com.dayglance.app.launcher.RESIZE"
+        const val ACTION_TOGGLE_ROUTINE = "com.dayglance.app.launcher.TOGGLE_ROUTINE"
+        val ACTIONS = setOf(ACTION_CREATE, ACTION_COMPLETE, ACTION_UNCOMPLETE, ACTION_MOVE, ACTION_RESIZE, ACTION_TOGGLE_ROUTINE)
     }
 }

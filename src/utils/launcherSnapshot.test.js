@@ -92,9 +92,34 @@ describe('buildLauncherSnapshot', () => {
       getDayWindow: (d) => (d === TODAY ? { start: '07:00', stop: '22:30' } : null),
       weatherCoords: { lat: 39.7, lon: -104.9 }, use24Hour: true,
     }));
-    expect(shaped.dayShape).toEqual({ dayStartMin: 420, dayStopMin: 1350, sunriseMin: 432, sunsetMin: 1104, use24HourClock: true });
+    expect(shaped.dayShape).toEqual({
+      dayStartMin: 420, dayStopMin: 1350, sunriseMin: 432, sunsetMin: 1104, use24HourClock: true,
+      lat: 39.7, lon: -104.9, dialAlarm: null,
+    });
     const bare = buildLauncherSnapshot(base());
-    expect(bare.dayShape).toEqual({ dayStartMin: null, dayStopMin: null, sunriseMin: null, sunsetMin: null, use24HourClock: false });
+    expect(bare.dayShape).toEqual({ dayStartMin: null, dayStopMin: null, sunriseMin: null, sunsetMin: null, use24HourClock: false, lat: null, lon: null, dialAlarm: null });
+    expect(bare.weather).toEqual([]);
+  });
+
+  it('carries the alarm-mark prefs, defaulted where they are malformed', () => {
+    expect(buildLauncherSnapshot(base({ dialAlarm: { on: false, fromMin: 21 * 60 } })).dayShape.dialAlarm).toEqual({ on: false, fromMin: 1260 });
+    expect(buildLauncherSnapshot(base({ dialAlarm: {} })).dayShape.dialAlarm).toEqual({ on: true, fromMin: 1080 });
+  });
+
+  it('ships the hourly weather one row per forecast date, in the user\'s unit, with the hours it has', () => {
+    const hourlyByDate = {
+      '2026-10-20': { 0: { temp: 41, code: 3, uv: 0 }, 1: { temp: 40, code: 61, uv: 0 } },
+      [TODAY]: { 9: { temp: 55, code: 0, uv: 2.34 }, 12: { temp: 63, code: 1, uv: 5.5 }, 13: { temp: 'bad', code: null } },
+    };
+    const snap = buildLauncherSnapshot(base({ weatherHourlyByDate: hourlyByDate, weatherTempUnit: 'celsius' }));
+    expect(snap.weather.map(w => w.id)).toEqual([TODAY, '2026-10-20']);
+    expect(snap.weather[0]).toEqual({
+      id: TODAY, date: TODAY, unit: 'celsius',
+      hours: [{ hour: 9, temp: 55, code: 0, uv: 2.3 }, { hour: 12, temp: 63, code: 1, uv: 5.5 }, { hour: 13, temp: null, code: null, uv: null }],
+    });
+    expect(snap.weather[1].hours).toHaveLength(2);
+    expect(buildLauncherSnapshot(base({ weatherHourlyByDate: hourlyByDate })).weather[0].unit).toBe('fahrenheit');
+    expect(buildLauncherSnapshot(base({ weatherHourlyByDate: { [TODAY]: {} } })).weather).toEqual([]);
   });
 
   it('carries the handled-writes ledger and a fingerprint that ignores updatedAt', () => {

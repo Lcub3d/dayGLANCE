@@ -16,6 +16,7 @@ class LauncherSnapshotRowsTest {
          "projects":[],
          "routines":[{"id":"r1","name":"Stretch","completed":false}],
          "frames":[{"id":"f1:2026-10-19","frameId":"f1","date":"2026-10-19"}],
+         "weather":[{"id":"2026-10-19","date":"2026-10-19","unit":"fahrenheit","hours":[{"hour":9,"temp":55,"code":0,"uv":2.3}]}],
          "dayShape":{"dayStartMin":420,"dayStopMin":1350,"sunriseMin":432,"sunsetMin":1104,"use24HourClock":false},
          "handledWrites":[{"clientId":"w-1","taskId":"t1","action":"create"}]}
     """.trimIndent()
@@ -27,6 +28,9 @@ class LauncherSnapshotRowsTest {
         assertEquals("Call dentist", JSONObject(rows[1].json).getString("title"))
         assertTrue(JSONObject(rows[1].json).isNull("date"))
         assertEquals(0, LauncherSnapshotRows.rows(snapshot, "projects")!!.size)
+        val weather = LauncherSnapshotRows.rows(snapshot, "weather")!!.single()
+        assertEquals("2026-10-19", weather.id)
+        assertEquals(55, JSONObject(weather.json).getJSONArray("hours").getJSONObject(0).getInt("temp"))
     }
 
     @Test

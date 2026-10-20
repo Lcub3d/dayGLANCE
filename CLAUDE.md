@@ -128,6 +128,24 @@ feature-local namespace. Add new keys to `public/locales/*/translation.json`;
   grid and snaps to 15 minutes like every view. Do not reimplement timeline
   behaviour inside JOBO: extend the shared column instead.
 
+# Daily notes storage
+
+Daily notes live in IndexedDB, one row per date (`src/utils/dailyNotesStore.js`,
+#2141); React state still holds the whole map and both sync tiers see it through
+the payload. The rules:
+
+- **Not loaded is not empty.** `dataLoaded` waits for the notes, and until they
+  load (or for a session in which they could not) `dailyNotesSyncable()` is
+  false: nothing is written, and the payload and backups omit `dailyNotes`
+  rather than send `{}`. The vault diff carries an omitted map forward
+  (`absentCollectionKinds` in `src/sync/dbAdapter.js`).
+- **The move never loses the only copy.** The old localStorage key is removed
+  only after every date it held reads back from the database. Where IndexedDB
+  is unavailable the notes stay in localStorage, as before.
+- **Write through the store.** `writeDailyNotes` (per changed date) and
+  `restoreDailyNotesFromBackup`; a restore awaits `flushDailyNotes()` before it
+  reloads. Nothing else touches the database or the old key.
+
 # Adding a field to a task
 
 Task rows cross four subsystems, and a new field has to be declared to each one

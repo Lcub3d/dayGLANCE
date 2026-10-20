@@ -27,6 +27,9 @@ vi.mock('../sync/dbEngine.js', async (importOriginal) => ({
 }));
 
 const { default: HeadlessRefresh } = await import('./HeadlessRefresh.jsx');
+const { IDBFactory } = await import('fake-indexeddb');
+const notesStore = await import('../utils/dailyNotesStore.js');
+const { openDatabase } = await import('../utils/idbKeyValue.js');
 const { missingSyncEngineDeps } = await import('../hooks/useSyncEngineData.js');
 
 function memoryStorage() {
@@ -84,7 +87,7 @@ const seedStorage = (ls, { cloud = true, vault = false, encrypted = false } = {}
 };
 
 /** A file-tier engine that merges one remote task into whatever payload it is given. */
-function scriptedFileEngine({ remoteTasks = [T('t2', 'From the other device', { lastModified: '2026-10-19T09:30:00.000Z' })], fail = null, lastSynced = '2026-10-19T10:00:00.000Z' } = {}) {
+function scriptedFileEngine({ remoteTasks = [T('t2', 'From the other device', { lastModified: '2026-10-19T09:30:00.000Z' })], remoteNotes = null, fail = null, lastSynced = '2026-10-19T10:00:00.000Z' } = {}) {
   const seen = { payloads: [], applies: 0 };
   const factory = vi.fn((callbacks) => ({
     sync: async () => {
@@ -92,6 +95,7 @@ function scriptedFileEngine({ remoteTasks = [T('t2', 'From the other device', { 
       const payload = await callbacks.buildPayload();
       seen.payloads.push(payload);
       const merged = { ...payload.data, tasks: [...payload.data.tasks, ...remoteTasks] };
+      if (remoteNotes) merged.dailyNotes = { ...(payload.data.dailyNotes || {}), ...remoteNotes };
       await callbacks.applyPayload(merged, { allowEmpty: true });
       seen.applies += 1;
     },
@@ -248,6 +252,38 @@ describe('HeadlessRefresh', () => {
     expect(engine.factory).not.toHaveBeenCalled();
     expect(calls.recordLauncherRefresh.at(-1)).toMatchObject({ outcome: 'failed', reason: 'no sync tier is configured' });
     root.unmount();
+  });
+
+  // #2141: daily notes live in IndexedDB. The root loads them the way App
+  // does (loadData, which moves them out of localStorage on the first run),
+  // publishes them only once loaded, and an applied note lands in the database.
+  it('moves the notes to IndexedDB, publishes them once loaded, and applies a pulled note there', async () => {
+    globalThis.indexedDB = new IDBFactory();
+    const dbName = `headless-notes-${Math.random()}`;
+    notesStore.resetDailyNotesStore({ backend: notesStore.createIdbNotesBackend(openDatabase, dbName), storage: ls });
+    try {
+      seedStorage(ls);
+      const mine = { '2026-10-18': { text: 'written here', lastModified: '2026-10-18T20:00:00.000Z' } };
+      const theirs = { '2026-10-19': { text: 'from the phone', lastModified: '2026-10-19T07:00:00.000Z' } };
+      ls.setItem(notesStore.LEGACY_NOTES_KEY, JSON.stringify(mine));
+      const { bridge, calls } = fakeBridge();
+      globalThis.window.DayGlanceNative = bridge;
+      const engine = scriptedFileEngine({ remoteNotes: theirs });
+      const root = await mount({ bridge: () => bridge, createFileEngine: engine.factory, createVaultEngine: () => null, now: () => new Date('2026-10-19T12:00:00') });
+      await until(() => calls.headlessDone.length > 0);
+      await notesStore.flushDailyNotes();
+
+      // The payload carried the moved notes, not an empty map.
+      expect(engine.seen.payloads[0].data.dailyNotes).toEqual(mine);
+      // They left localStorage, and the database holds both, the pulled one included.
+      expect(ls.getItem(notesStore.LEGACY_NOTES_KEY)).toBeNull();
+      const rows = await notesStore.createIdbNotesBackend(openDatabase, dbName).readAll();
+      expect(rows.value).toEqual({ ...mine, ...theirs });
+      root.unmount();
+    } finally {
+      notesStore.resetDailyNotesStore();
+      delete globalThis.indexedDB;
+    }
   });
 
   it('the store supplies every dep the sync payload and apply read', () => {

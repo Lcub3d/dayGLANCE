@@ -5,6 +5,11 @@ the size of your data in local storage (Settings → Storage Breakdown shows
 that figure). This page lists how many copies each channel keeps, so the
 total footprint can be worked out from that one number.
 
+Every channel carries the daily notes as a `dailyNotes` field. They live in
+IndexedDB rather than local storage (#2141), so they are not part of the
+local-storage figure; a backup taken while they have not loaded leaves them
+out rather than recording them as empty.
+
 ## Local auto-backups (IndexedDB)
 
 - **What:** a snapshot on the hourly, daily or weekly cadence you choose,

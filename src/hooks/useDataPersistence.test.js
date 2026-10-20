@@ -88,7 +88,7 @@ describe('loadData normalization write-back', () => {
     const useDataPersistence = await loadHookAs('main');
     const { props } = makeProps();
 
-    useDataPersistence(props).loadData();
+    await useDataPersistence(props).loadData();
 
     // All four write sites fire. Without this the normalization is lost and
     // stampTaskTimestamps re-stamps lastModified on every task at next load.
@@ -116,7 +116,7 @@ describe('loadData normalization write-back', () => {
     };
     globalThis.localStorage.getItem = vi.fn((k) => store[k] ?? null);
 
-    useDataPersistence(props).loadData();
+    await useDataPersistence(props).loadData();
 
     const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
     const expected = {
@@ -135,7 +135,7 @@ describe('loadData normalization write-back', () => {
     const useDataPersistence = await loadHookAs('tray');
     const { props } = makeProps();
 
-    useDataPersistence(props).loadData();
+    await useDataPersistence(props).loadData();
 
     // The tray holds a snapshot as of its last reload; persisting from it would
     // overwrite fresher main-window data (useSaveOnChange.js:5).
@@ -147,7 +147,7 @@ describe('loadData normalization write-back', () => {
     const useDataPersistence = await loadHookAs('tray');
     const { props, setters } = makeProps();
 
-    useDataPersistence(props).loadData();
+    await useDataPersistence(props).loadData();
 
     // setTasks takes an updater; run it to see the value the tray would render.
     const tasksUpdater = setters.setTasks.mock.calls[0][0];
@@ -489,7 +489,7 @@ describe('loadData isolates an unreadable bucket (#2138)', () => {
     const persistence = await loadHookAs('main');
     const failures = await import('../utils/loadFailures.js');
     const { props, setters } = makeProps();
-    persistence(props).loadData();
+    await persistence(props).loadData();
     return { persistence, failures, setters };
   };
 

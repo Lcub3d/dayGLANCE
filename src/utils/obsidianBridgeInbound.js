@@ -48,6 +48,7 @@ import {
 import { getBridgePairingMeta, bridgeRateLimited, bridgeVaultClientFor } from './obsidianBridgeStream.js';
 import { BRIDGE_COPIES_KEY, rememberBridgeCopies } from './bridgeFleet.js';
 import { resolveProjectRef } from './obsidianProjectNotes.js';
+import { getStoredDailyNotes } from './dailyNotesStore.js';
 
 const OBS_HWM_KEY = 'dayglance-bridge-obs-hwm';
 
@@ -271,8 +272,10 @@ function ownedTokenNotes(existingTasks, existingInbox) {
   return owner;
 }
 
+// The notes as last loaded or written (utils/dailyNotesStore.js: IndexedDB, or
+// localStorage where there is none); {} while they have not loaded.
 function readKnownDailyNotes() {
-  try { return JSON.parse(localStorage.getItem('day-planner-daily-notes') || '{}'); } catch { return {}; }
+  return getStoredDailyNotes() || {};
 }
 
 export function applyBridgeObservations(observations, {

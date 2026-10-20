@@ -559,9 +559,13 @@ describe('scenario 14: a payload that omits the ledger key at the launch push', 
     expect(absentCollectionKinds({ ...EMPTY, joboRecords: [] })).toEqual([]);
     expect(carryAbsentCollections(prev, { ...EMPTY })).toEqual({ [jid(rec())]: 'h1' });
     expect(carryAbsentCollections(prev, { ...EMPTY, joboRecords: [] })).toEqual({});
-    // A payload with no tasks key either carries both kinds; the date map is not a collection kind.
+    // A payload with no tasks key either carries both kinds.
     const { tasks, ...noTasks } = EMPTY;
     expect(carryAbsentCollections(prev, noTasks)).toEqual({ [jid(rec())]: 'h1', 'tasks:t1': 'h2' });
+    // The daily-notes date map follows the same rule (#2141): omitted until it
+    // has loaded from IndexedDB, and an omitted map carries; {} does not.
+    const { dailyNotes, ...noNotes } = EMPTY;
+    expect(carryAbsentCollections(prev, { ...noNotes, joboRecords: [] })).toEqual({ 'dailyNotes:2026-09-19': 'h3' });
   });
 
   it('proposes no vanish-delete, re-fetches nothing, and re-pushes nothing once the ledger loads', async () => {
@@ -636,4 +640,72 @@ describe('scenario 14: a payload that omits the ledger key at the launch push', 
       warn.mockRestore();
     }
   });
+});
+
+// #2141: daily notes moved to IndexedDB, and buildSyncPayload omits the map
+// until they have loaded. A launch cycle that runs before then must not read
+// every note in the snapshot as deleted.
+describe('daily notes omitted from the payload until they have loaded', () => {
+  beforeEach(() => {
+    global.localStorage = memLocalStorage();
+    setVaultConfig({ enabled: true, vaultUrl: 'https://vault.test', vaultToken: 'tok', accountId: 'acct-notes' });
+    setSyncPassphrase('correct horse battery staple');
+  });
+  afterAll(() => { delete global.localStorage; });
+
+  function notesDevice(vault, snapshotStore, getNotes) {
+    let data = JSON.parse(JSON.stringify(EMPTY));
+    let nativeKey = null;
+    const engine = createDbEngine({
+      vaultClient: vault,
+      storageKeyPrefix: 'notes-A',
+      deviceId: 'device-A',
+      snapshotStore,
+      nativeGetSyncKey: () => nativeKey,
+      nativeStoreSyncKey: (v) => { nativeKey = v; },
+      getData: () => {
+        const { dailyNotes, ...rest } = JSON.parse(JSON.stringify(data));
+        const notes = getNotes();
+        return notes === undefined ? rest : { ...rest, dailyNotes: notes };
+      },
+      commitData: (d) => { data = d; },
+    });
+    return engine;
+  }
+
+  it('proposes no note deletes before the load, and nothing to push after it', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const vault = memVault();
+      const snapshots = createMemoryKeyValue();
+      const notes = { '2026-10-19': { text: 'journal', lastModified: T0 } };
+      const nid = makeEntityId('dailyNotes', '2026-10-19');
+      const first = notesDevice(vault, snapshots, () => notes);
+      await first.dbSyncCycle();
+      await first.dbSyncCycle();
+      expect(vault.has(nid)).toBe(true);
+      const pushesBefore = vault.calls.batch;
+
+      // Relaunch before the IndexedDB read has finished: no dailyNotes key.
+      let loaded;
+      const relaunched = notesDevice(vault, snapshots, () => loaded);
+      await relaunched.dbSyncCycle();
+      // MUTATION: drop DATE_MAP_KIND from absentCollectionKinds and the note
+      // is a vanish-delete the guard has to skip and re-fetch.
+      expect(guardWarnings(warn)).toEqual([]);
+      expect(vault.calls.getRow).toBe(0);
+      expect(vault.calls.deleteRow).toBe(0);
+      expect(vault.calls.batch).toBe(pushesBefore);
+      expect(vault.has(nid)).toBe(true);
+
+      // Loaded: the same notes, nothing to push.
+      loaded = notes;
+      await relaunched.dbSyncCycle();
+      expect(vault.calls.batch).toBe(pushesBefore);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  const guardWarnings = (spy) => spy.mock.calls.filter((args) => String(args[0]).includes('GUARD'));
 });

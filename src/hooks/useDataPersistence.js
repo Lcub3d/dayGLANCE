@@ -25,6 +25,8 @@ const isSubscriptionImport = (t) =>
 import { isTrayMode } from '../utils/trayMode.js';
 import { repairLoadedGhostRows } from '../utils/obsidianGhostRows.js';
 import { recordLoadFailure, isLoadProtected } from '../utils/loadFailures.js';
+import { loadDailyNotes } from '../utils/dailyNotesStore.js';
+import { mergeDailyNotes } from '@glance-apps/sync';
 import { writeItem, getWriteFailures } from '../utils/storageWrites.js';
 
 // What the save pass last wrote, per key (#2140). Every change used to
@@ -191,13 +193,6 @@ export default function useDataPersistence({
       const completedTaskUidsData = localStorage.getItem('day-planner-task-completed-uids');
       if (completedTaskUidsData) setCompletedTaskUids(new Set(JSON.parse(completedTaskUidsData)));
     });
-    // App's useState initializer has already read the notes (and recorded a
-    // failure there if they were unreadable); this re-read keeps a reload of
-    // loadData in step with storage.
-    bucket(['day-planner-daily-notes'], () => {
-      const dailyNotesData = localStorage.getItem('day-planner-daily-notes');
-      if (dailyNotesData) setDailyNotes(JSON.parse(dailyNotesData));
-    });
     bucket(['day-planner-recurring-tasks'], () => {
       const recurringTasksData = localStorage.getItem('day-planner-recurring-tasks');
       if (recurringTasksData) setRecurringTasks(JSON.parse(recurringTasksData));
@@ -288,9 +283,21 @@ export default function useDataPersistence({
       const goalsProjectsEnabledData = localStorage.getItem('day-planner-goals-projects-enabled');
       if (goalsProjectsEnabledData !== null) setGoalsProjectsEnabled(JSON.parse(goalsProjectsEnabledData));
     });
+    // Daily notes come from IndexedDB, asynchronously (utils/dailyNotesStore.js,
+    // which also moves them out of localStorage on the first run). dataLoaded
+    // waits for them, so nothing gated on it (the save pass, both sync tiers,
+    // backups) ever sees the map before it has loaded. Edits made in the
+    // moment before are kept: the loaded map and the live one merge per date,
+    // newer lastModified winning, as sync merges them.
+    //
     // Loaded, though not necessarily in full: whatever could not be read is
     // protected (utils/loadFailures.js) and the banner says so.
-    setDataLoaded(true);
+    return loadDailyNotes({ readOnly: isTrayMode })
+      .then(({ notes }) => {
+        setDailyNotes(prev => mergeDailyNotes(notes, prev || {}).merged);
+      })
+      .catch((error) => console.error('[load] daily notes:', error))
+      .finally(() => setDataLoaded(true));
   };
 
   const saveData = () => {

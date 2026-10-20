@@ -28,6 +28,7 @@ import { dropTombstonedObsidianTasks, dropTombstonedObsidianNotes } from '../uti
 import { containObsidianGhostRows, persistDerivedGhostRetirements } from '../utils/obsidianGhostRows.js';
 import { ICS_CALENDARS_KEY, loadIcsCalendars, stripIcsCalendarCredentials, applyRemoteIcsCalendars, PRIMARY_CAL_META_KEY, injectPrimaryStub, splitPrimaryStub } from '../utils/icsFeedSync.js';
 import { normalizeBucketConfig } from '../utils/bucketList.js';
+import { dailyNotesSyncable, writeDailyNotes } from '../utils/dailyNotesStore.js';
 import { sanitizeMergedRoutineCompletions, startOfTodayIso } from './useRoutines.js';
 
 /** Every key the hook reads, by kind. */
@@ -155,7 +156,11 @@ export default function useSyncEngineData(deps) {
         // or the Obsidian write-commit. See utils/retiredTaskIds.js.
         retiredTaskIds: readRetiredTaskIds(),
         removedTodayRoutineIds,
-        dailyNotes,
+        // Omitted, not {}, until the notes have loaded from IndexedDB (or for a
+        // session in which they could not be): not loaded is not empty. The
+        // vault diff carries an omitted map forward (dbAdapter
+        // absentCollectionKinds); the file-tier merge keeps the remote's notes.
+        ...(dailyNotesSyncable() ? { dailyNotes } : {}),
         // Per-day START/STOP timeline markers (flat date map + 'defaults',
         // per-entry lastModified). Read through the ref: the engine can call
         // this closure a beat after a render.
@@ -414,7 +419,10 @@ export default function useSyncEngineData(deps) {
       // pulled/merged map (this replace used to be the notes' half of the
       // echo war). A note re-created later (newer lastModified) passes.
       const gatedNotes = dropTombstonedObsidianNotes(data.dailyNotes, obsidianTombs);
-      localStorage.setItem('day-planner-daily-notes', JSON.stringify(gatedNotes));
+      // Written here as well as by the app's notes effect, because the headless
+      // root has no such effect. Per date, and a no-op while the notes are not
+      // loaded (utils/dailyNotesStore.js).
+      writeDailyNotes(gatedNotes);
       setDailyNotes(gatedNotes);
     }
     // Day windows MERGE (per-entry LWW) rather than overwrite like the slices

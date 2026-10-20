@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">dayGLANCE</string>
     <string name="launcher_permission_label">Read dayGLANCE data for GLANCElauncher</string>
+    <string name="launcher_refresh_notification">Refreshing for GLANCElauncher</string>
     <string name="launcher_permission_description">Lets GLANCElauncher read the day\'s tasks, goals, projects, routines and frames, and send it tasks to create or complete.</string>
     <string name="widget_description">Today\'s agenda at a glance</string>
     <string name="widget_upnext_description">Detailed view of your next scheduled task</string>

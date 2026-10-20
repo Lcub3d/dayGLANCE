@@ -30,6 +30,7 @@ describe('collectDeviceSettings', () => {
       // excluded: volatile cursors
       'day-planner-cloud-sync-last-synced': '2026-07-22T00:00:00Z',
       'day-planner-steps-cache': '{"big":"cache"}',
+      'day-planner-auto-backup-remote-fingerprint': '{"fingerprint":"f"}',
       // legacy unprefixed settings — the inbox filter bar and dismissals
       'inboxPriorityFilter': '"high"',
       'inboxTagFilter': '["work"]',
@@ -65,6 +66,8 @@ describe('collectDeviceSettings', () => {
     expect(out['day-planner-cloud-sync-config']).toBeUndefined();
     expect(out['day-planner-cloud-sync-last-synced']).toBeUndefined();
     expect(out['day-planner-steps-cache']).toBeUndefined();
+    // A backup marker: captured, it would change the payload after every upload.
+    expect(out['day-planner-auto-backup-remote-fingerprint']).toBeUndefined();
     expect(out['someOtherApp-key']).toBeUndefined();
     expect(out['dayglance-vault-hwm']).toBeUndefined();
   });

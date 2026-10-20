@@ -11,6 +11,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { TASK_COLORS } from '../utils/colorUtils.js';
 import { writeItem } from '../utils/storageWrites.js';
+import { readGoalsProjectsEnabled } from '../utils/storedSlices.js';
 
 /**
  * The legacy `setShowGoalsDashboard(value)` maps onto the desktop space: true
@@ -40,17 +41,8 @@ const useGoalsProjects = () => {
   // "App Development"). Standalone projects are never associated with an area.
   const [areas, setAreas] = useState([]);
 
-  const [goalsProjectsEnabled, setGoalsProjectsEnabled] = useState(() => {
-    const stored = localStorage.getItem('day-planner-goals-projects-enabled');
-    if (stored !== null) return JSON.parse(stored);
-    // Default OFF for new installs; ON if data already exists (upgrade migration)
-    try {
-      const existingGoals = JSON.parse(localStorage.getItem('day-planner-goals') || '[]');
-      const existingProjects = JSON.parse(localStorage.getItem('day-planner-projects') || '[]');
-      if (existingGoals.length > 0 || existingProjects.length > 0) return true;
-    } catch (_) {}
-    return false;
-  });
+  // Default OFF for new installs; ON if data already exists (upgrade migration).
+  const [goalsProjectsEnabled, setGoalsProjectsEnabled] = useState(readGoalsProjectsEnabled);
   const goalsProjectsEnabledRef = useRef(goalsProjectsEnabled);
   goalsProjectsEnabledRef.current = goalsProjectsEnabled;
 

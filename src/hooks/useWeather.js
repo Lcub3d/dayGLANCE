@@ -4,6 +4,7 @@ import { isTrayMode } from '../utils/trayMode.js';
 import { storeWeatherCoords } from '../utils/solar.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
 import { writeItem } from '../utils/storageWrites.js';
+import { readWeatherZip, readWeatherTempUnit } from '../utils/storedSlices.js';
 
 const getWeatherCondition = (code) => {
   if (code === 0) return 'Clear';
@@ -38,12 +39,8 @@ const getWeatherIcon = (code) => {
 };
 
 const useWeather = () => {
-  const [weatherZip, setWeatherZip] = useState(() => {
-    return localStorage.getItem('day-planner-weather-zip') || '';
-  });
-  const [weatherTempUnit, setWeatherTempUnit] = useState(() => {
-    return localStorage.getItem('day-planner-weather-temp-unit') || 'fahrenheit';
-  });
+  const [weatherZip, setWeatherZip] = useState(readWeatherZip);
+  const [weatherTempUnit, setWeatherTempUnit] = useState(readWeatherTempUnit);
   const [weather, setWeather] = useState(null);
 
   // Persist weather settings to localStorage

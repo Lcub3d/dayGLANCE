@@ -1,14 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { OBSIDIAN_LAUNCH_ON_WRITE_KEY } from '../utils/obsidianLaunchOnWrite.js';
 import { writeItem } from '../utils/storageWrites.js';
+import { readObsidianConfig, readObsidianCompletionDates } from '../utils/storedSlices.js';
 
 const useObsidian = () => {
-  const [obsidianConfig, setObsidianConfig] = useState(() => {
-    try {
-      const saved = localStorage.getItem('day-planner-obsidian-config');
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  });
+  const [obsidianConfig, setObsidianConfig] = useState(readObsidianConfig);
   const [obsidianSyncStatus, setObsidianSyncStatus] = useState('idle'); // 'idle' | 'syncing' | 'success' | 'error'
   const [obsidianSyncError, setObsidianSyncError] = useState(null);
   // Whether this device can reach its vault (probeVaultAccess): 'unknown'
@@ -51,12 +47,7 @@ const useObsidian = () => {
   // preference. Aesthetic, not correctness: OFF means markers stop being
   // regenerated and lines converge clean on their next touch (no sweep);
   // reading both marker formats stays unconditional.
-  const [obsidianCompletionDates, setObsidianCompletionDates] = useState(() => {
-    try {
-      const saved = localStorage.getItem('day-planner-obsidian-completion-dates');
-      return saved === null ? true : JSON.parse(saved) === true;
-    } catch { return true; }
-  });
+  const [obsidianCompletionDates, setObsidianCompletionDates] = useState(readObsidianCompletionDates);
 
   useEffect(() => {
     writeItem('day-planner-obsidian-completion-dates', JSON.stringify(obsidianCompletionDates));

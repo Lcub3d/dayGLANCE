@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
 import './index.css'
+import { isHeadlessRefresh } from './headless/headlessMode.js'
 import i18n, { ready as i18nReady } from './i18n.js'
 import { buildApplicationMenuLabels } from './utils/applicationMenuLabels.js'
 import { installSubtleDigestShim } from './utils/sha256.js'
@@ -94,11 +94,19 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-function mount() {
+// The root is imported, not statically, so that each one's module graph is
+// loaded only in its own mode: the headless refresh (src/headless/, an
+// Activity-less WebView the Android shell runs for the launcher) must not
+// evaluate App's modules, and the app does not carry the headless root.
+async function mount() {
+  const headless = isHeadlessRefresh()
+  const { default: Root } = headless
+    ? await import('./headless/HeadlessRefresh.jsx')
+    : await import('./App.jsx')
   ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
       <ErrorBoundary>
-        <App />
+        <Root />
       </ErrorBoundary>
     </React.StrictMode>,
   )

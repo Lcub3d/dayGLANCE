@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { dateToString } from '../utils/taskUtils.js';
 import { markBookkeepingChange } from '../utils/localEditStamp.js';
 import { writeItem } from '../utils/storageWrites.js';
+import { readRoutinesEnabled, emptyRoutineDefinitions } from '../utils/storedSlices.js';
 
 // Local midnight (00:00:00) of the current day, as an ISO instant. This is the
 // moment routine completions "reset" each day, and the timestamp used to stamp
@@ -68,6 +69,19 @@ export const rolloverRemovedTodayRoutineIds = (existing = {}, clearedRoutines = 
 // payload verbatim renders the routine already-done today (every render site
 // keys on presence in routineCompletions).
 //
+// The completion state a root loads at start: today's completions verbatim,
+// prior-day ones reset with midnight tombstones (resetRoutineCompletionsForToday).
+// Read once, as both the completions and their timestamps come from one call.
+// Shared with the headless refresh root (src/headless/), which builds the sync
+// payload from state it loads itself and must load it as the app does.
+export const loadRoutineState = () => {
+  try {
+    const storedC = JSON.parse(localStorage.getItem('day-planner-routine-completions') || '{}');
+    const storedTs = JSON.parse(localStorage.getItem('day-planner-routine-completion-timestamps') || '{}');
+    return resetRoutineCompletionsForToday(storedC, storedTs, dateToString(new Date()), startOfTodayIso());
+  } catch (_) { return { completions: {}, timestamps: {} }; }
+};
+
 // Unlike resetRoutineCompletionsForToday (the LOAD-time reset), this must NOT
 // rewrite timestamps wholesale: an un-complete marker (timestamp present,
 // completion absent) carries its real recency and downgrading it to midnight
@@ -117,7 +131,7 @@ const useRoutines = ({ currentTime, onboardingProgress, setOnboardingProgress, h
   const currentOwner = () => hrOwnerRef?.current ?? null;
   // True when a routine chip / today-routine belongs to `owner` (or is unowned).
   const ownedByOwner = (item, owner) => !owner || !item.ownerSyncId || item.ownerSyncId === owner;
-  const [routineDefinitions, setRoutineDefinitions] = useState({ monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: [], everyday: [] });
+  const [routineDefinitions, setRoutineDefinitions] = useState(emptyRoutineDefinitions);
   const [todayRoutines, setTodayRoutines] = useState([]);
   const [routinesDate, setRoutinesDate] = useState('');
   const [removedTodayRoutineIds, setRemovedTodayRoutineIds] = useState({});
@@ -127,13 +141,6 @@ const useRoutines = ({ currentTime, onboardingProgress, setOnboardingProgress, h
   // which stops a stale remote completion from resurrecting it on the first sync
   // — the "added-already-completed" bug. Read once, since the timestamp
   // initializer needs the raw completions too.
-  const loadRoutineState = () => {
-    try {
-      const storedC = JSON.parse(localStorage.getItem('day-planner-routine-completions') || '{}');
-      const storedTs = JSON.parse(localStorage.getItem('day-planner-routine-completion-timestamps') || '{}');
-      return resetRoutineCompletionsForToday(storedC, storedTs, dateToString(new Date()), startOfTodayIso());
-    } catch (_) { return { completions: {}, timestamps: {} }; }
-  };
   const [routineCompletions, setRoutineCompletions] = useState(() => loadRoutineState().completions);
   // Per-routine completion timestamps (ISO), the sync LWW key that lets an
   // un-complete (or a day-rollover reset) win over a stale complete instead of
@@ -147,21 +154,9 @@ const useRoutines = ({ currentTime, onboardingProgress, setOnboardingProgress, h
   const [routineDeleteConfirm, setRoutineDeleteConfirm] = useState(null); // { bucket, chipId, chipName }
   const [routineFocusedChipId, setRoutineFocusedChipId] = useState(null); // touch: first tap shows buttons, second executes
   const [routineDurationEditId, setRoutineDurationEditId] = useState(null); // id of routine chip being duration-edited on timeline
-  const [routinesEnabled, setRoutinesEnabled] = useState(() => {
-    // If the user has an explicit stored preference, use it.
-    const stored = localStorage.getItem('day-planner-routines-enabled');
-    if (stored !== null) return JSON.parse(stored);
-    // No stored preference: default OFF for new installs, but ON if the user
-    // already has routine data (upgrade migration — don't silently disable their routines).
-    try {
-      const existing = JSON.parse(localStorage.getItem('day-planner-routine-definitions') || 'null');
-      if (existing) {
-        const hasAny = Object.values(existing).some(arr => arr.length > 0);
-        if (hasAny) return true;
-      }
-    } catch (_) {}
-    return false;
-  });
+  // An explicit stored preference wins; without one, OFF for new installs but
+  // ON when routine data already exists (an update never silently hides it).
+  const [routinesEnabled, setRoutinesEnabled] = useState(readRoutinesEnabled);
 
   // Persist completions to localStorage
   useEffect(() => {

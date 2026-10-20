@@ -778,7 +778,10 @@
     "theme": "Tema",
     "themeSystem": "Sistema",
     "glanceWebdavLog": "Registro de eventos WebDAV",
-    "aiNeedsKey": "Añade una clave de API arriba para activarlas."
+    "aiNeedsKey": "Añade una clave de API arriba para activarlas.",
+    "binAutoEmpty": "Vaciar la papelera automáticamente",
+    "binAutoEmptyAfter": "Después de {{days}} días",
+    "binAutoEmptyHint": "Las tareas eliminadas hace más tiempo se borran definitivamente en todos los dispositivos que sincronizas."
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",

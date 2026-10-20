@@ -1876,6 +1876,8 @@ const DayPlanner = () => {
     filterByTags,
     filteredUnscheduledTasks,
     filteredTodayTasks,
+    liveInboxTagFilter,
+    liveInboxProjectFilter,
   } = useComputedViews({
     tasks,
     unscheduledTasks,
@@ -1888,6 +1890,7 @@ const DayPlanner = () => {
     hideStandaloneTasksInbox,
     inboxTagFilter,
     inboxProjectFilter,
+    projects,
     goalsProjectsEnabled,
     isVisibleForUser,
   });
@@ -7597,8 +7600,13 @@ const DayPlanner = () => {
     hideCompletedInbox, setHideCompletedInbox,
     hideProjectTasksInbox, setHideProjectTasksInbox,
     hideStandaloneTasksInbox, setHideStandaloneTasksInbox,
-    inboxTagFilter, setInboxTagFilter,
-    inboxProjectFilter, setInboxProjectFilter,
+    // The FILTER UIs get the selections that still resolve
+    // (useComputedViews.liveInbox*): a chip whose project/tag is gone matches
+    // nothing, so it must not light the "filter is active" dot or narrow a
+    // list. The setters still own the saved preference, which is what the
+    // persistence layer writes.
+    inboxTagFilter: liveInboxTagFilter, setInboxTagFilter,
+    inboxProjectFilter: liveInboxProjectFilter, setInboxProjectFilter,
     inboxArchivedExpanded, setInboxArchivedExpanded,
     priorityPromptDismissed, setPriorityPromptDismissed,
     sectionInfoDismissed, setSectionInfoDismissed,

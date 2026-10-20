@@ -14,6 +14,7 @@ export default function useComputedViews({
   hideStandaloneTasksInbox,
   inboxTagFilter,
   inboxProjectFilter,
+  projects,
   goalsProjectsEnabled,
   isVisibleForUser,
 }) {
@@ -76,6 +77,30 @@ export default function useComputedViews({
     });
   }, [selectedTags]);
 
+  // A saved Inbox filter can name a project or tag that no longer exists (a
+  // deleted project, a tag whose last task was renamed). Applying it verbatim
+  // matches nothing while the filter's "active" dot still says a filter is on,
+  // so the list reads as "all my tasks are gone" (#2137 review). Ignore the
+  // stale selections at READ time instead of pruning the saved preference:
+  // tasks and tags keep arriving after the first load (the Obsidian ingest, the
+  // first sync apply), so a preference pruned before they land would
+  // permanently drop a selection that was only temporarily unseen. The values
+  // here are what the filter UIs should use for their "active" state; the
+  // setters still own the saved preference.
+  const liveInboxProjectFilter = useMemo(() => {
+    const saved = inboxProjectFilter || [];
+    if (saved.length === 0) return saved;
+    const live = new Set((projects || []).map(project => String(project.id)));
+    const kept = saved.filter(id => live.has(String(id)));
+    return kept.length === saved.length ? saved : kept;
+  }, [inboxProjectFilter, projects]);
+  const liveInboxTagFilter = useMemo(() => {
+    const saved = inboxTagFilter || [];
+    if (saved.length === 0) return saved;
+    const kept = saved.filter(tag => filterableTags.includes(tag));
+    return kept.length === saved.length ? saved : kept;
+  }, [inboxTagFilter, filterableTags]);
+
   // Inbox tasks filtered by priority and completion status.
   // When goalsProjectsEnabled, tasks tied to a project live on the dashboard
   // instead of the inbox — they get their own home in the project card.
@@ -95,7 +120,7 @@ export default function useComputedViews({
       .filter(task => {
         if (!goalsProjectsEnabled) return true;
         // If specific projects are selected, show only tasks from those projects
-        if (inboxProjectFilter.length > 0) return task.projectId && inboxProjectFilter.includes(task.projectId);
+        if (liveInboxProjectFilter.length > 0) return task.projectId && liveInboxProjectFilter.includes(task.projectId);
         // Otherwise apply type-level toggles
         if (hideProjectTasksInbox && task.projectId) return false;
         if (hideStandaloneTasksInbox && !task.projectId) return false;
@@ -105,9 +130,9 @@ export default function useComputedViews({
       .filter(task => !(task.completed && task.deadline))
       .filter(task => !hideCompletedInbox || !task.completed)
       .filter(task => {
-        if (inboxTagFilter.length === 0) return true;
+        if (liveInboxTagFilter.length === 0) return true;
         const taskTags = extractTags(task.title);
-        return inboxTagFilter.some(tag => taskTags.includes(tag));
+        return liveInboxTagFilter.some(tag => taskTags.includes(tag));
       })
       .sort((a, b) => {
         // Completed tasks always sink below incomplete ones
@@ -115,7 +140,7 @@ export default function useComputedViews({
         return (b.priority || 0) - (a.priority || 0);
       }),
     [unscheduledTasks, inboxPriorityFilter, hideCompletedInbox, hideProjectTasksInbox,
-     hideStandaloneTasksInbox, inboxTagFilter, inboxProjectFilter, goalsProjectsEnabled,
+     hideStandaloneTasksInbox, liveInboxTagFilter, liveInboxProjectFilter, goalsProjectsEnabled,
      isVisibleForUser]
   );
 
@@ -133,5 +158,9 @@ export default function useComputedViews({
     filterByTags,
     filteredUnscheduledTasks,
     filteredTodayTasks,
+    // What an "a filter is active" indicator should use: a saved selection whose
+    // target no longer exists matches nothing and must not light it up.
+    liveInboxTagFilter,
+    liveInboxProjectFilter,
   };
 }

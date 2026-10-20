@@ -64,6 +64,7 @@ import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLoca
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
 import { planFrameNudge, resolveFrameNudgeAnswer } from './utils/frameNudge.js';
 import { getOverdueTasks as collectOverdueTasks } from './utils/getOverdueTasks.js';
+import useStorageProjection from './hooks/useStorageProjection.js';
 import { backupFingerprint, readLastRemoteBackup, writeLastRemoteBackup, canSkipRemoteUpload } from './utils/backupDedupe.js';
 import { recordLoadFailure } from './utils/loadFailures.js';
 import { parseICS, parseDatetime, filterByDateWindow, expandMultiDayEvent } from './utils/icsParser.js';
@@ -1510,6 +1511,8 @@ const DayPlanner = () => {
     playUISound,
     onStorageFull: () => setUndoToast({ message: t('backup.storageFull'), kind: 'warning' }),
   });
+  // A daily sample of local-storage use and a warning before it is full (#2141).
+  useStorageProjection({ dataLoaded, isTrayMode, setUndoToast, t });
 
   // AI configuration, voice input, and weekly review state
   const {

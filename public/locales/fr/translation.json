@@ -1374,7 +1374,16 @@
     "loadFailedDownload": "Télécharger une copie",
     "loadFailedDiscard": "Supprimer",
     "loadFailedDiscardConfirm": "Supprimer les données illisibles ? Vos données actuelles seront enregistrées par-dessus, et c'est irréversible. Téléchargez d'abord une copie si vous pourriez en avoir besoin.",
-    "seeWhatIsUsingSpace": "Voir ce qui occupe l'espace"
+    "seeWhatIsUsingSpace": "Voir ce qui occupe l'espace",
+    "projectionPending": "Une prévision apparaît après une semaine d'utilisation.",
+    "projectionFlat": "Le stockage local n'augmente pas.",
+    "projectionWarningFull": "Le stockage local est plein à plus de 80 %. Ouvrez « Répartition du stockage » dans les réglages pour voir ce qui l'occupe.",
+    "projectionDays_one": "Au rythme actuel, le stockage local sera plein dans environ {{count}} jour.",
+    "projectionMonths_one": "Au rythme actuel, le stockage local sera plein dans environ {{count}} mois.",
+    "projectionWarningSoon_one": "Le stockage local se remplit : au rythme actuel, il sera plein dans environ {{count}} jour. Ouvrez « Répartition du stockage » dans les réglages pour voir ce qui l'occupe.",
+    "projectionDays_other": "Au rythme actuel, le stockage local sera plein dans environ {{count}} jours.",
+    "projectionMonths_other": "Au rythme actuel, le stockage local sera plein dans environ {{count}} mois.",
+    "projectionWarningSoon_other": "Le stockage local se remplit : au rythme actuel, il sera plein dans environ {{count}} jours. Ouvrez « Répartition du stockage » dans les réglages pour voir ce qui l'occupe."
   },
   "weeklyReview": {
     "tasksDone": "Tâches terminées",

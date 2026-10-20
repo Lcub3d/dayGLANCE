@@ -99,6 +99,10 @@ const EXCLUDED_KEYS = new Set([
   'day-planner-trmnl-last-synced',
   'day-planner-trmnl-push-state',
   'day-planner-steps-cache',
+  // Storage trend samples and the last warning (utils/storageProjection.js):
+  // this device's measurements, and a daily change would defeat backup dedupe.
+  'day-planner-storage-samples',
+  'day-planner-storage-projection-warned',
 ]);
 
 const isCapturable = (key) =>

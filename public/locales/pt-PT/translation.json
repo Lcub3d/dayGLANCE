@@ -1374,7 +1374,16 @@
     "loadFailedDownload": "Transferir uma cópia",
     "loadFailedDiscard": "Descartar",
     "loadFailedDiscardConfirm": "Descartar os dados ilegíveis? Os seus dados atuais serão guardados por cima, e isto não pode ser anulado. Transfira primeiro uma cópia, se puder precisar dela.",
-    "seeWhatIsUsingSpace": "Ver o que está a ocupar espaço"
+    "seeWhatIsUsingSpace": "Ver o que está a ocupar espaço",
+    "projectionPending": "Uma previsão aparece após uma semana de utilização.",
+    "projectionFlat": "O armazenamento local não está a crescer.",
+    "projectionWarningFull": "O armazenamento local está mais de 80% cheio. Abra “Detalhes do armazenamento” nas Definições para ver o que o ocupa.",
+    "projectionDays_one": "Ao ritmo atual, o armazenamento local fica cheio dentro de cerca de {{count}} dia.",
+    "projectionMonths_one": "Ao ritmo atual, o armazenamento local fica cheio dentro de cerca de {{count}} mês.",
+    "projectionWarningSoon_one": "O armazenamento local está a encher: ao ritmo atual, fica cheio dentro de cerca de {{count}} dia. Abra “Detalhes do armazenamento” nas Definições para ver o que o ocupa.",
+    "projectionDays_other": "Ao ritmo atual, o armazenamento local fica cheio dentro de cerca de {{count}} dias.",
+    "projectionMonths_other": "Ao ritmo atual, o armazenamento local fica cheio dentro de cerca de {{count}} meses.",
+    "projectionWarningSoon_other": "O armazenamento local está a encher: ao ritmo atual, fica cheio dentro de cerca de {{count}} dias. Abra “Detalhes do armazenamento” nas Definições para ver o que o ocupa."
   },
   "weeklyReview": {
     "tasksDone": "Tarefas concluídas",

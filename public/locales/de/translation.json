@@ -1374,7 +1374,16 @@
     "loadFailedDownload": "Kopie herunterladen",
     "loadFailedDiscard": "Verwerfen",
     "loadFailedDiscardConfirm": "Die unlesbaren Daten verwerfen? Deine aktuellen Daten werden darüber gespeichert, und das lässt sich nicht rückgängig machen. Lade vorher eine Kopie herunter, falls du sie brauchen könntest.",
-    "seeWhatIsUsingSpace": "Speicherbelegung ansehen"
+    "seeWhatIsUsingSpace": "Speicherbelegung ansehen",
+    "projectionPending": "Eine Prognose erscheint nach einer Woche Nutzung.",
+    "projectionFlat": "Der lokale Speicher wächst nicht.",
+    "projectionWarningFull": "Der lokale Speicher ist zu über 80 % voll. Unter Einstellungen → „Speicherbelegung“ siehst du, was ihn belegt.",
+    "projectionDays_one": "Bei gleichbleibender Nutzung ist der lokale Speicher in etwa {{count}} Tag voll.",
+    "projectionMonths_one": "Bei gleichbleibender Nutzung ist der lokale Speicher in etwa {{count}} Monat voll.",
+    "projectionWarningSoon_one": "Der lokale Speicher füllt sich: Bei gleichbleibender Nutzung ist er in etwa {{count}} Tag voll. Unter Einstellungen → „Speicherbelegung“ siehst du, was ihn belegt.",
+    "projectionDays_other": "Bei gleichbleibender Nutzung ist der lokale Speicher in etwa {{count}} Tagen voll.",
+    "projectionMonths_other": "Bei gleichbleibender Nutzung ist der lokale Speicher in etwa {{count}} Monaten voll.",
+    "projectionWarningSoon_other": "Der lokale Speicher füllt sich: Bei gleichbleibender Nutzung ist er in etwa {{count}} Tagen voll. Unter Einstellungen → „Speicherbelegung“ siehst du, was ihn belegt."
   },
   "weeklyReview": {
     "tasksDone": "Erledigte Aufgaben",

@@ -1,0 +1,231 @@
+// Scenario tests for the referential repair at the sync boundary (#2137).
+//
+// The unit suites cover the helpers and the boot pass; neither can see the path
+// that matters: a deletion is pushed as a tombstone in a payload, and ANOTHER
+// device applies it. That is where a task keeps a projectId after its project
+// is gone (the Inbox hides "project tasks") and where a project keeps a goalId
+// after its goal is gone (it belongs to neither list). CLAUDE.md's
+// "Adding a field to a task" asks for exactly this shape of test: walk the
+// production code between the modules, not a re-implementation of it.
+//
+// The harness calls the real useSyncEngineData hook as a plain function (it
+// holds no React state of its own — the deps object carries everything) with
+// two independent "devices": separate state, separate localStorage.
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../utils/nativeCalendar.js', () => ({ hasNativeCalendar: () => false }));
+
+import useSyncEngineData, { SYNC_ENGINE_DATA_DEPS } from '../hooks/useSyncEngineData.js';
+import { initialHeadlessState } from '../headless/useHeadlessStore.js';
+import { detachDeletedProject } from './deleteCascade.js';
+
+const NOW = '2026-10-19T12:00:00.000Z';
+const T = (id, extra = {}) => ({
+  id, title: id, notes: '', subtasks: [], lastModified: '2026-10-19T08:00:00.000Z', ...extra,
+});
+const P = (id, extra = {}) => ({
+  id, title: id, status: 'active', updatedAt: '2026-10-01T00:00:00.000Z', ...extra,
+});
+
+function memoryStorage() {
+  const m = new Map();
+  return {
+    getItem: (k) => (m.has(k) ? m.get(k) : null),
+    setItem: (k, v) => { m.set(k, String(v)); },
+    removeItem: (k) => { m.delete(k); },
+    clear: () => m.clear(),
+    get length() { return m.size; },
+    key: (i) => [...m.keys()][i] ?? null,
+  };
+}
+
+/** Run `fn` with the device's localStorage installed, as that app instance would. */
+function on(device, fn) {
+  const previous = globalThis.localStorage;
+  globalThis.localStorage = device.storage;
+  try { return fn(); } finally { globalThis.localStorage = previous; }
+}
+
+/**
+ * One app instance: its state slices, setters that behave like React's
+ * functional setters, its localStorage and the real payload/apply pair built
+ * over them. `mount()` reads the state at call time, like a render does.
+ */
+function device(overrides = {}) {
+  const state = { ...initialHeadlessState(), ...overrides };
+  const refs = {
+    tasksLiveRef: { current: state.tasks },
+    unscheduledLiveRef: { current: state.unscheduledTasks },
+    // Refs the sync deps list, not slices: nothing in these scenarios uses
+    // day windows or the JOBO ledger.
+    dayWindowsRef: { current: null },
+    joboRecordsRef: { current: undefined },
+    applyingRemoteDataRef: { current: false },
+    suppressClearPendingRef: { current: false },
+    suppressCloudUploadRef: { current: false },
+    suppressTimestampRef: { current: false },
+  };
+  const setters = {};
+  for (const name of SYNC_ENGINE_DATA_DEPS.setters) {
+    const key = name[3].toLowerCase() + name.slice(4);
+    setters[name] = (next) => {
+      state[key] = typeof next === 'function' ? next(state[key]) : next;
+      if (key === 'tasks') refs.tasksLiveRef.current = state.tasks;
+      if (key === 'unscheduledTasks') refs.unscheduledLiveRef.current = state.unscheduledTasks;
+    };
+  }
+  const storage = memoryStorage();
+  const self = {
+    state,
+    storage,
+    setters,
+    mount() {
+      const deps = {};
+      for (const key of SYNC_ENGINE_DATA_DEPS.values) deps[key] = state[key];
+      // Slices whose App value is derived from another hook's state.
+      deps.allTodayRoutines = state.todayRoutines;
+      deps.dayWindowsRef = refs.dayWindowsRef;
+      deps.joboRecordsRef = refs.joboRecordsRef;
+      deps.tasksLiveRef = refs.tasksLiveRef;
+      deps.unscheduledLiveRef = refs.unscheduledLiveRef;
+      Object.assign(deps, setters);
+      for (const key of SYNC_ENGINE_DATA_DEPS.refs) deps[key] = refs[key];
+      deps.applyRemoteDayWindows = vi.fn();
+      deps.applyRemoteJobo = vi.fn();
+      deps.stampTaskTimestamps = (list) => list;
+      // The hook holds no React state of its own (the deps object carries every
+      // value and setter); calling it as a plain factory is what lets the two
+      // devices be pointed at separate localStorage stores.
+      const build = useSyncEngineData;
+      return build(deps);
+    },
+  };
+  return self;
+}
+
+/** Write a device's state to its storage the way the save pass would. */
+function persist(device) {
+  const { state, storage } = device;
+  storage.setItem('day-planner-tasks', JSON.stringify(state.tasks));
+  storage.setItem('day-planner-unscheduled', JSON.stringify(state.unscheduledTasks));
+  storage.setItem('day-planner-recycle-bin', JSON.stringify(state.recycleBin));
+  storage.setItem('day-planner-recurring-tasks', JSON.stringify(state.recurringTasks));
+  storage.setItem('day-planner-projects', JSON.stringify(state.projects));
+  storage.setItem('day-planner-goals', JSON.stringify(state.goals));
+}
+
+const stored = (device, key) => JSON.parse(device.storage.getItem(key) || 'null');
+
+describe('referential integrity across a sync cycle (#2137)', () => {
+  beforeEach(() => {
+    // initialHeadlessState() reads its non-synced slices through localStorage.
+    globalThis.localStorage = memoryStorage();
+  });
+  afterEach(() => {
+    delete globalThis.localStorage;
+    vi.restoreAllMocks();
+  });
+
+  it('delete on device A → push → apply on device B detaches every row for the deleted project', () => {
+    // ── Device A: delete project p1 through the same cascade deleteProject uses.
+    const A = device({ tasks: [T('t1', { projectId: 'p1' })], projects: [P('p1')] });
+    persist(A);
+    A.storage.setItem('day-planner-deleted-project-ids', '{}');
+    detachDeletedProject('p1', {
+      setTasks: A.setters.setTasks,
+      setUnscheduledTasks: A.setters.setUnscheduledTasks,
+      setRecurringTasks: A.setters.setRecurringTasks,
+      setRecycleBin: A.setters.setRecycleBin,
+    });
+    // What useGoalsProjects.deleteProject then does: drop the row, write the tombstone.
+    A.setters.setProjects([]);
+    A.storage.setItem('day-planner-deleted-project-ids', JSON.stringify({ p1: NOW }));
+
+    const pushed = on(A, () => A.mount().buildSyncPayload()).data;
+    // The delete itself is complete on A: task detached, project gone, tombstone carried.
+    expect(pushed.tasks[0]).not.toHaveProperty('projectId');
+    expect(pushed.projects).toEqual([]);
+    expect(pushed.deletedProjectIds).toHaveProperty('p1');
+
+    // ── Device B: still holds p1 and two of its tasks; the merge it applies is
+    // A's payload plus B's own rows (the file tier unions both sides).
+    const B = device({
+      tasks: [T('t1', { projectId: 'p1' }), T('t2', { projectId: 'p1' })],
+      unscheduledTasks: [T('u1', { projectId: 'p1' })],
+      projects: [P('p1')],
+    });
+    persist(B);
+    B.storage.setItem('day-planner-deleted-project-ids', '{}');
+    const merged = {
+      ...pushed,
+      // B's newer local copy of t2, and its inbox item, as the merge returns them.
+      tasks: [T('t1', { projectId: 'p1' }), T('t2', { projectId: 'p1' })],
+      unscheduledTasks: [T('u1', { projectId: 'p1' })],
+      // The tombstone wins over B's stale project row in the merge.
+      projects: [],
+    };
+
+    on(B, () => B.mount().applyEngineData(merged));
+
+    expect(B.state.tasks.map(task => task.projectId)).toEqual([undefined, undefined]);
+    expect(B.state.unscheduledTasks[0]).not.toHaveProperty('projectId');
+    expect(stored(B, 'day-planner-tasks').map(task => task.projectId)).toEqual([undefined, undefined]);
+    expect(stored(B, 'day-planner-unscheduled')[0]).not.toHaveProperty('projectId');
+    expect(B.state.projects).toEqual([]);
+    // The apply carried the tombstone forward, so B's own later payload keeps the delete.
+    expect(stored(B, 'day-planner-deleted-project-ids')).toHaveProperty('p1');
+  });
+
+  it('delete goal on A → push → apply on B makes B\'s stale project copy standalone', () => {
+    const A = device({ projects: [P('p1', { goalId: 'g1' })], goals: [{ id: 'g1', title: 'G' }] });
+    persist(A);
+    A.storage.setItem('day-planner-deleted-goal-ids', '{}');
+    // deleteGoal's cascade (useGoalsProjects writes the tombstone after it).
+    A.setters.setProjects((projects) => projects.map(({ goalId, ...rest }) => rest));
+    A.setters.setGoals([]);
+    A.storage.setItem('day-planner-deleted-goal-ids', JSON.stringify({ g1: NOW }));
+
+    const pushed = on(A, () => A.mount().buildSyncPayload()).data;
+    expect(pushed.projects[0]).not.toHaveProperty('goalId');
+    expect(pushed.deletedGoalIds).toHaveProperty('g1');
+
+    const B = device({
+      projects: [P('p1', { goalId: 'g1' })],
+      goals: [{ id: 'g1', title: 'G' }],
+    });
+    persist(B);
+    B.storage.setItem('day-planner-deleted-goal-ids', '{}');
+    // The merge keeps B's stale project row (both sides carry it), but unions A's tombstone.
+    const merged = { ...pushed, projects: [P('p1', { goalId: 'g1' })], goals: [] };
+
+    on(B, () => B.mount().applyEngineData(merged));
+
+    expect(B.state.projects[0]).not.toHaveProperty('goalId');
+    expect(stored(B, 'day-planner-projects')[0]).not.toHaveProperty('goalId');
+    // Unstamped: the repair is the same on every device, so a tie converges.
+    expect(B.state.projects[0].updatedAt).toBe('2026-10-01T00:00:00.000Z');
+  });
+
+  it('restore-after-delete keeps the restored project\'s tasks attached', () => {
+    // The backup was taken BEFORE the deletion: p1 exists there, no tombstone.
+    const A = device({ tasks: [T('t1', { projectId: 'p1' })], projects: [P('p1')] });
+    persist(A);
+    A.storage.setItem('day-planner-deleted-project-ids', '{}');
+    const backup = on(A, () => A.mount().buildSyncPayload()).data;
+    expect(backup.deletedProjectIds).toEqual({});
+
+    // B deleted p1 and still holds its tombstone; restore replaces the tombstone
+    // maps with the backup's, so the restore must not apply B's local map to the
+    // restored rows (that would bring the project back with its tasks detached).
+    const B = device({ tasks: [T('t1')], projects: [] });
+    persist(B);
+    B.storage.setItem('day-planner-deleted-project-ids', JSON.stringify({ p1: NOW }));
+
+    on(B, () => B.mount().applyEngineData(backup));
+
+    expect(B.state.projects.map(project => project.id)).toEqual(['p1']);
+    expect(B.state.tasks[0].projectId).toBe('p1');
+    expect(stored(B, 'day-planner-tasks')[0].projectId).toBe('p1');
+    expect(stored(B, 'day-planner-deleted-project-ids')).toEqual({});
+  });
+});

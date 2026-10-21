@@ -64,6 +64,7 @@ import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLoca
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
 import { planFrameNudge, resolveFrameNudgeAnswer } from './utils/frameNudge.js';
 import { getOverdueTasks as collectOverdueTasks } from './utils/getOverdueTasks.js';
+import { getStoredDailyNotes, flushDailyNotes, restoreDailyNotesFromBackup } from './utils/dailyNotesStore.js';
 import { readBinAutoEmptyDays, BIN_AUTO_EMPTY_KEY } from './utils/recycleBinRetention.js';
 import { backupFingerprint, readLastRemoteBackup, writeLastRemoteBackup, canSkipRemoteUpload } from './utils/backupDedupe.js';
 import { recordLoadFailure } from './utils/loadFailures.js';
@@ -4636,6 +4637,8 @@ const DayPlanner = () => {
         weatherTempUnit: localStorage.getItem('day-planner-weather-temp-unit') || 'fahrenheit',
         habits: JSON.parse(localStorage.getItem('day-planner-habits') || '[]'),
         habitLogs: JSON.parse(localStorage.getItem('day-planner-habit-logs') || '{}'),
+        // Daily notes (IndexedDB since #2141); manual exports never carried them.
+        dailyNotes: getStoredDailyNotes(),
         // Your notes on calendar events live on this device only, so a backup
         // is how they reach a new one (utils/eventNotes.js).
         eventNotes: readEventNotes(),
@@ -4725,6 +4728,9 @@ const DayPlanner = () => {
       // focus log, tombstones, …). Local backups only — cloud sync stays
       // device-agnostic by design; these payloads exist to resurrect ONE
       // device after a profile wipe.
+      // First-class since the notes moved to IndexedDB (#2141). Omitted, not
+      // {}, while they have not loaded (utils/dailyNotesStore.js).
+      dailyNotes: getStoredDailyNotes(),
       deviceSettings: collectDeviceSettings(),
     }
   });
@@ -4827,6 +4833,8 @@ const DayPlanner = () => {
       // so the post-reload cycle full-pulls and LWW-merges (never blind-pushes).
       resetVaultSyncCursor();
       applyEngineData(data);
+      // The notes write is asynchronous (IndexedDB); let it land first.
+      await flushDailyNotes();
       window.location.reload();
     } catch (err) {
       alert(t('backup.restoreFailed', { error: err.message }));
@@ -4846,6 +4854,7 @@ const DayPlanner = () => {
       // restoreFromAutoBackup for the stale-snapshot/stale-HWM hazard).
       resetVaultSyncCursor();
       applyEngineData(backup.data);
+      await flushDailyNotes();
       window.location.reload();
     } catch (err) {
       alert(t('backup.remoteRestoreFailed', { error: err.message }));
@@ -4899,7 +4908,7 @@ const DayPlanner = () => {
   // Write a backup payload's data section back into localStorage. Shared by
   // the file-based restore (restoreBackup) and the folder-based restore
   // (restoreFromBackupFolder); callers handle cursor reset + reload.
-  const applyBackupToLocalStorage = (data) => {
+  const applyBackupToLocalStorage = async (data) => {
     // Device-scoped settings snapshot (present in folder/auto backups, absent
     // from manual exports). Applied first so the explicit fields below — which
     // carry their own normalization (habits/routines enable logic) — win any
@@ -4956,6 +4965,10 @@ const DayPlanner = () => {
       else localStorage.removeItem('gettingStartedDismissed');
     }
     if (data.onboardingProgress) localStorage.setItem('onboardingProgress', JSON.stringify(data.onboardingProgress));
+    // Daily notes live in IndexedDB (#2141): replace them, from the field or,
+    // for an older backup, from the localStorage key in its deviceSettings,
+    // and wait for the write before the caller reloads.
+    await restoreDailyNotesFromBackup(data);
   };
 
   // Restore data from backup file. Falls back to the staged pendingBackupFile
@@ -4978,7 +4991,7 @@ const DayPlanner = () => {
         }
 
         await restoreJoboOrThrow(backup.data);
-        applyBackupToLocalStorage(backup.data);
+        await applyBackupToLocalStorage(backup.data);
 
         // Full-state replacement → invalidate the vault sync cursors (see
         // restoreFromAutoBackup for the stale-snapshot/stale-HWM hazard).
@@ -5017,7 +5030,7 @@ const DayPlanner = () => {
         return;
       }
       await restoreJoboOrThrow(payload.data);
-      applyBackupToLocalStorage(payload.data);
+      await applyBackupToLocalStorage(payload.data);
       // Re-arm folder backup after the reload regardless of what the backed-up
       // config said — the user just restored from this folder, so keep writing
       // to it. The handle is already persisted by openForRestore.

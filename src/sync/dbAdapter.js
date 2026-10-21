@@ -206,10 +206,15 @@ function makeSingletonEntity(data, key) {
 // keeps them, so the cycle after the ledger loads diffs clean too. `[]` still
 // means empty and still diffs as such.
 
+// The daily-notes date map follows the same rule: it is omitted until it has
+// loaded from IndexedDB (utils/dailyNotesStore.js, #2141), and an omitted map
+// must not read as every note deleted.
+const ABSENT_CAPABLE_KINDS = [...Object.keys(COLLECTION_KINDS), DATE_MAP_KIND];
+
 /** The collection kinds whose key is missing from the payload (`undefined`). */
 export function absentCollectionKinds(data) {
-  if (!data || typeof data !== 'object') return Object.keys(COLLECTION_KINDS);
-  return Object.keys(COLLECTION_KINDS).filter((kind) => data[kind] === undefined);
+  if (!data || typeof data !== 'object') return [...ABSENT_CAPABLE_KINDS];
+  return ABSENT_CAPABLE_KINDS.filter((kind) => data[kind] === undefined);
 }
 
 /**

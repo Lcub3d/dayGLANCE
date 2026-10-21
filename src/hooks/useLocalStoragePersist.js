@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNotifyTrayOnChange } from '../utils/trayNotify.js';
 import { isTrayMode } from '../utils/trayMode.js';
-import { isLoadProtected } from '../utils/loadFailures.js';
+import { dailyNotesSyncable, writeDailyNotes } from '../utils/dailyNotesStore.js';
 import { writeItem } from '../utils/storageWrites.js';
 
 export default function useLocalStoragePersist({
@@ -71,12 +71,14 @@ export default function useLocalStoragePersist({
     }
   }, [sectionInfoDismissed, skipOnboardingPersist]);
 
-  // Persist dailyNotes to localStorage and trigger cloud sync upload
+  // Persist dailyNotes (utils/dailyNotesStore.js: IndexedDB, per date, or
+  // localStorage where there is no database) and trigger cloud sync upload.
+  // Nothing is written, or stamped, until the notes have loaded: not loaded is
+  // not empty, and the map in state before that is not the user's (#2141).
+  // Unreadable notes stay protected the same way (#2138). The tray never writes.
   useEffect(() => {
-    // Unreadable notes are not empty notes: this state never saw them, so it
-    // must not be written over them (utils/loadFailures.js, #2138).
-    if (isLoadProtected('day-planner-daily-notes')) return;
-    writeItem('day-planner-daily-notes', JSON.stringify(dailyNotes));
+    if (isTrayMode || !dailyNotesSyncable()) return;
+    writeDailyNotes(dailyNotes);
     if (!suppressCloudUploadRef.current && (!cloudSyncConfig?.enabled || cloudSyncInitialDoneRef.current)) {
       writeItem('day-planner-cloud-sync-local-modified', new Date().toISOString());
       // A note edited here (useDataPersistence stamps the same key for the rest).

@@ -56,7 +56,8 @@ describe('collectDeviceSettings', () => {
     expect(out['day-planner-default-view']).toBe('"sched"');
     expect(out['day-planner-weather-zip']).toBe('80301');
     expect(out['day-planner-sched-filter-presets']).toBe('[{"id":"1"}]');
-    expect(out['day-planner-daily-notes']).toBe('{"2026-07-22":{"text":"hi"}}');
+    // Daily notes are a first-class backup field now (#2141), not a device setting.
+    expect(out['day-planner-daily-notes']).toBeUndefined();
     expect(out['day-planner-deleted-task-ids']).toBe('{"t1":"2026-07-01"}');
   });
 

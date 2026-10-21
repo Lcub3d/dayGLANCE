@@ -64,6 +64,7 @@ import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLoca
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
 import { planFrameNudge, resolveFrameNudgeAnswer } from './utils/frameNudge.js';
 import { getOverdueTasks as collectOverdueTasks } from './utils/getOverdueTasks.js';
+import { readBinAutoEmptyDays, BIN_AUTO_EMPTY_KEY } from './utils/recycleBinRetention.js';
 import { backupFingerprint, readLastRemoteBackup, writeLastRemoteBackup, canSkipRemoteUpload } from './utils/backupDedupe.js';
 import { recordLoadFailure } from './utils/loadFailures.js';
 import { detachDeletedProject, reparentDeletedGoal, clearDeletedMemberRefs } from './utils/deleteCascade.js';
@@ -641,6 +642,11 @@ const DayPlanner = () => {
     return saved !== null ? JSON.parse(saved) : 14;
   });
   useEffect(() => { writeItem('day-planner-inbox-auto-archive-days', JSON.stringify(inboxAutoArchiveDays)); }, [inboxAutoArchiveDays]);
+  // Recycle Bin auto-empty (#2141; utils/recycleBinRetention.js). Device-local
+  // like the inbox setting above, but its effect is not: the purge writes
+  // deletion tombstones, which sync carries to every device.
+  const [binAutoEmptyDays, setBinAutoEmptyDays] = useState(readBinAutoEmptyDays);
+  useEffect(() => { writeItem(BIN_AUTO_EMPTY_KEY, JSON.stringify(binAutoEmptyDays)); }, [binAutoEmptyDays]);
   // Live Activity (iOS): OPT-IN, default off — the compact island widens the
   // sensor housing enough to hide the cellular/wifi status icons, so an
   // all-day ambient activity must be the user's choice. Device-local (not
@@ -1545,6 +1551,7 @@ const DayPlanner = () => {
     setTasks, setUnscheduledTasks,
     playUISound,
     onStorageFull: () => setUndoToast({ message: t('backup.storageFull'), kind: 'warning' }),
+    autoEmptyDays: binAutoEmptyDays, dataLoaded, isTrayMode,
   });
 
   // AI configuration, voice input, and weekly review state
@@ -7585,6 +7592,7 @@ const DayPlanner = () => {
     use24HourClock, setUse24HourClock,
     liveActivityEnabled, setLiveActivityEnabled,
     inboxAutoArchiveDays, setInboxAutoArchiveDays,
+    binAutoEmptyDays, setBinAutoEmptyDays,
     weekStartDay, setWeekStartDay,
     homeTimezone, setHomeTimezone,
     weekTimelineStartHour, setWeekTimelineStartHour,

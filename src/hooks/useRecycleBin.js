@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { writeItem } from '../utils/storageWrites.js';
+import { expiredBinItems } from '../utils/recycleBinRetention.js';
 
 export default function useRecycleBin({
   recycleBin,
@@ -9,6 +10,12 @@ export default function useRecycleBin({
   setUnscheduledTasks,
   playUISound,
   onStorageFull,
+  // Automatic emptying (#2141): days after which a bin item is removed for
+  // good, 0 for never. Runs once the data has loaded and whenever the setting
+  // changes; the app reloads every night, which makes that a daily sweep.
+  autoEmptyDays = 0,
+  dataLoaded = false,
+  isTrayMode = false,
 }) {
   const [showEmptyBinConfirm, setShowEmptyBinConfirm] = useState(false);
   const [showMobileRecycleBin, setShowMobileRecycleBin] = useState(false);
@@ -39,35 +46,59 @@ export default function useRecycleBin({
     setShowEmptyBinConfirm(true);
   };
 
-  const confirmEmptyBin = () => {
-    // Record tombstones for permanently deleted tasks (prevents resurrection during merge sync).
-    // PROVENANCE (see utils/retiredTaskIds.js): user-pressed delete — intent
-    // known, no successor — so deletedTaskIds, never retiredTaskIds (the
-    // commit-that-renames' channel) or deletedObsidianKeys (the detector's).
+  // Record tombstones for permanently deleted tasks (prevents resurrection during merge sync).
+  // PROVENANCE (see utils/retiredTaskIds.js): user-pressed delete — intent
+  // known, no successor — so deletedTaskIds, never retiredTaskIds (the
+  // commit-that-renames' channel) or deletedObsidianKeys (the detector's).
+  // The automatic empty is the user's standing choice, so the same channel.
+  //
+  // The tombstones are what license the deletion on other devices, so a bin
+  // emptied without them comes back on the next sync. Returns false when they
+  // cannot be written (storage full); the caller then removes nothing (#2139).
+  const writeBinTombstones = (items) => {
     let tombstones = {};
     try { tombstones = JSON.parse(localStorage.getItem('day-planner-deleted-task-ids') || '{}') || {}; } catch { tombstones = {}; }
     const now = new Date().toISOString();
-    recycleBin.forEach(t => { tombstones[String(t.id)] = now; });
-    // The tombstones are what license the deletion on other devices, so a bin
-    // emptied without them comes back on the next sync. When they cannot be
-    // written (storage full), stop before anything is removed and say so,
-    // rather than throwing out of the handler halfway (#2139).
-    if (!writeItem('day-planner-deleted-task-ids', JSON.stringify(tombstones))) {
+    items.forEach(t => { tombstones[String(t.id)] = now; });
+    return writeItem('day-planner-deleted-task-ids', JSON.stringify(tombstones));
+  };
+
+  // Deindex permanently deleted tasks from Spotlight so they don't linger.
+  const deindex = (items) => {
+    try {
+      const ids = items.map(t => String(t.id));
+      if (ids.length > 0) window.DayGlanceNative?.deindexSpotlight?.(JSON.stringify(ids));
+    } catch (_) {}
+  };
+
+  const confirmEmptyBin = () => {
+    if (!writeBinTombstones(recycleBin)) {
       setShowEmptyBinConfirm(false);
       onStorageFull?.();
       return;
     }
     pushUndo({ key: 'binEmptied' });
-    // Deindex permanently deleted tasks from Spotlight so they don't linger.
-    try {
-      const ids = recycleBin.map(t => String(t.id));
-      if (ids.length > 0) window.DayGlanceNative?.deindexSpotlight?.(JSON.stringify(ids));
-    } catch (_) {}
+    deindex(recycleBin);
     setRecycleBin([]);
     setShowEmptyBinConfirm(false);
     setShowMobileRecycleBin(false);
     playUISound('crumple');
   };
+
+  // The automatic empty. No undo step and no sound: nobody pressed anything.
+  // When the tombstones cannot be written nothing is removed, and the next
+  // launch tries again.
+  useEffect(() => {
+    if (isTrayMode || !dataLoaded || !autoEmptyDays) return;
+    const expired = expiredBinItems(recycleBin, autoEmptyDays);
+    if (expired.length === 0 || !writeBinTombstones(expired)) return;
+    deindex(expired);
+    const ids = new Set(expired.map(t => String(t.id)));
+    setRecycleBin(prev => prev.filter(t => !ids.has(String(t.id))));
+    // Keyed on load and the setting, not on every bin change: a sweep per
+    // launch is the cadence, and it keeps the purge out of sync applies.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataLoaded, autoEmptyDays]);
 
   return {
     showEmptyBinConfirm,

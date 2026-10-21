@@ -778,7 +778,10 @@
     "theme": "主题",
     "themeSystem": "跟随系统",
     "glanceWebdavLog": "WebDAV 事件日志",
-    "aiNeedsKey": "请先在上方添加 API 密钥，才能开启这些功能。"
+    "aiNeedsKey": "请先在上方添加 API 密钥，才能开启这些功能。",
+    "binAutoEmpty": "自动清空回收站",
+    "binAutoEmptyAfter": "{{days}} 天后",
+    "binAutoEmptyHint": "删除时间超过此期限的任务将被永久移除，所有同步的设备都会生效。"
   },
   "dailyNotes": {
     "quickNotes": "快速笔记",

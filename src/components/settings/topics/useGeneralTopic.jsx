@@ -9,6 +9,7 @@ import FollowUpTagSetting from '../../FollowUpTagSetting.jsx';
 import LanguagePicker from '../../LanguagePicker.jsx';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../../../context/DayPlannerContext.jsx';
+import { BIN_AUTO_EMPTY_CHOICES } from '../../../utils/recycleBinRetention.js';
 
 export default function useGeneralTopic() {
   const { t } = useTranslation();
@@ -18,7 +19,7 @@ export default function useGeneralTopic() {
     setWeekStartDay, homeTimezone, setHomeTimezone, soundEnabled, setSoundEnabled,
     isMobile, isTablet, weatherZip, setWeatherZip, fetchWeather, weatherTempUnit,
     setWeatherTempUnit, weatherEnabled, setWeatherEnabled, dailyContentEnabled,
-    setDailyContentEnabled,
+    setDailyContentEnabled, binAutoEmptyDays, setBinAutoEmptyDays,
   } = useDayPlannerCtx();
   const [trayHotkey, setTrayHotkey] = useState(() => localStorage.getItem('dg-tray-hotkey') || '');
   const [mainWindowHotkey, setMainWindowHotkey] = useState(() => localStorage.getItem('dg-main-window-hotkey') || '');
@@ -402,6 +403,23 @@ export default function useGeneralTopic() {
                   <option value={30}>{t('settings.inboxArchive30')}</option>
                   <option value={60}>{t('settings.inboxArchive60')}</option>
                 </select>
+              </div>
+              {/* Recycle Bin auto-empty (#2141). The purge writes deletion
+                  tombstones, so it reaches every synced device's bin. */}
+              <div>
+                <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.binAutoEmpty')}</label>
+                <select
+                  value={binAutoEmptyDays}
+                  onChange={(e) => setBinAutoEmptyDays(Number(e.target.value))}
+                  className={`px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                >
+                  {BIN_AUTO_EMPTY_CHOICES.map(days => (
+                    <option key={days} value={days}>
+                      {days === 0 ? t('settings.inboxArchiveNever') : t('settings.binAutoEmptyAfter', { days })}
+                    </option>
+                  ))}
+                </select>
+                <p className={`text-xs ${textSecondary} mt-1`}>{t('settings.binAutoEmptyHint')}</p>
               </div>
             </div>
         </>

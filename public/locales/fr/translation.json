@@ -778,7 +778,10 @@
     "theme": "Thème",
     "themeSystem": "Système",
     "glanceWebdavLog": "Journal d'événements WebDAV",
-    "aiNeedsKey": "Ajoutez une clé API ci-dessus pour les activer."
+    "aiNeedsKey": "Ajoutez une clé API ci-dessus pour les activer.",
+    "binAutoEmpty": "Vider la corbeille automatiquement",
+    "binAutoEmptyAfter": "Après {{days}} jours",
+    "binAutoEmptyHint": "Les tâches supprimées depuis plus longtemps sont effacées définitivement, sur tous les appareils que vous synchronisez."
   },
   "dailyNotes": {
     "quickNotes": "Notes rapides",

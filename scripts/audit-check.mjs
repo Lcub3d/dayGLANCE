@@ -54,6 +54,25 @@ const ACK = {
     reason: 'NTLMv2 hash disclosure (Windows only). Fix with the vite 5->8 upgrade.',
     review: '2026-12-31',
   },
+  // Published 2026-10-20 against launch-editor, which vite's DEV server uses to
+  // open a file from the error overlay. Every vite through 6.4.3 is affected,
+  // so vite 5 has no patched release; vitest's own vite 8 copy is on 8.3.4,
+  // which is fixed. Dev-only: `npm ls vite --omit=dev` is empty.
+  'GHSA-587h-7wmj-h5pm': {
+    disposition: 'defer', pkg: 'launch-editor (via vite)',
+    reason: 'Dev-server open-in-editor existence check bypass (Windows only). Fix with the vite 5->8 upgrade.',
+    review: '2026-12-31',
+  },
+  'GHSA-698v-4r3x-3vcv': {
+    disposition: 'defer', pkg: 'launch-editor (via vite)',
+    reason: 'Dev-server open-in-editor argument escaping (Windows only). Fix with the vite 5->8 upgrade.',
+    review: '2026-12-31',
+  },
+  'GHSA-r825-w8mm-5pxw': {
+    disposition: 'defer', pkg: 'launch-editor (via vite)',
+    reason: 'Dev-server open-in-editor CLI flag injection for some editors. Fix with the vite 5->8 upgrade.',
+    review: '2026-12-31',
+  },
   'GHSA-67mh-4wv8-2f99': {
     disposition: 'defer', pkg: 'esbuild',
     reason: 'Dev-server request/response exposure to any website. Fix with the vite 5->8 upgrade.',

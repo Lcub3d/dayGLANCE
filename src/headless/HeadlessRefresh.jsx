@@ -124,8 +124,15 @@ export default function HeadlessRefresh({
   callbacksRef.current = { buildSyncPayload, applyEngineData, multiUserEnabled, syncRetentionDays };
 
   // What stopped a cycle, when the engine reports it rather than throwing:
-  // a first-sync conflict, a missing passphrase, a transport error.
+  // a first-sync conflict, a missing passphrase, a transport error. Both
+  // engines also call onError(null, null) to CLEAR a previous error at the
+  // start of a cycle; that is not a blocker (the first device run read it as
+  // one and reported `failed (vault:)` after a cycle that had succeeded).
   const blockerRef = useRef(null);
+  const noteError = (tier) => (msg, code) => {
+    if (!msg && !code) return;
+    blockerRef.current = `${tier}: ${code || ''} ${msg || ''}`.trim();
+  };
   const fileEngineRef = useRef(null);
   const syncFolder = normalizeSyncFolder(cloudSyncConfig?.syncFolder);
   if (!fileEngineRef.current && cloudSyncConfig?.enabled) {
@@ -134,7 +141,7 @@ export default function HeadlessRefresh({
       buildBackupPayload: () => callbacksRef.current.buildSyncPayload(),
       applyPayload: (data, opts) => callbacksRef.current.applyEngineData(data, opts),
       onStatusChange: noop,
-      onError: (msg, code) => { blockerRef.current = `file tier: ${code || ''} ${msg || ''}`.trim(); },
+      onError: noteError('file tier'),
       onLastSyncedChange: noop,
       onConflict: () => { blockerRef.current = 'file tier: first sync needs the user to resolve a conflict'; },
       onPassphraseRequired: () => { blockerRef.current = 'passphrase required'; },
@@ -152,7 +159,7 @@ export default function HeadlessRefresh({
       commitData: (data) => callbacksRef.current.applyEngineData(data, { allowEmpty: true }),
       isMultiUserEnabled: () => callbacksRef.current.multiUserEnabled === true,
       onStatusChange: noop,
-      onError: (msg, code) => { blockerRef.current = `vault: ${code || ''} ${msg || ''}`.trim(); },
+      onError: noteError('vault'),
       onRowsSkipped: noop,
     });
     if (!engine) return;

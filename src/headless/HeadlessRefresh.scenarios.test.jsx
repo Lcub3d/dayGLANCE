@@ -211,6 +211,37 @@ describe('HeadlessRefresh', () => {
     root.unmount();
   });
 
+  it('an engine clearing its previous error is not a failure; a reported error is', async () => {
+    seedStorage(ls, { vault: true });
+    const { bridge, calls } = fakeBridge();
+    globalThis.window.DayGlanceNative = bridge;
+    const file = scriptedFileEngine();
+    // The vault engine clears, as both engines do at the start of a cycle, then succeeds.
+    const clearing = vi.fn((callbacks) => ({
+      dbSyncCycle: async () => { callbacks.onError(null, null); callbacks.onStatusChange('success'); },
+      getLastSynced: () => '2026-10-19T10:05:00.000Z',
+      dispose: vi.fn(),
+    }));
+    const root = await mount({ bridge: () => bridge, createFileEngine: file.factory, createVaultEngine: clearing });
+    await until(() => calls.headlessDone.length > 0);
+    expect(calls.headlessDone[0].outcome).toBe('ran');
+    root.unmount();
+
+    // A real report, without a throw, is the failure's reason.
+    const second = fakeBridge();
+    globalThis.window.DayGlanceNative = second.bridge;
+    const reporting = vi.fn((callbacks) => ({
+      dbSyncCycle: async () => { callbacks.onError(null, null); callbacks.onError('vault unreachable', 'NETWORK'); },
+      getLastSynced: () => null,
+      dispose: vi.fn(),
+    }));
+    const root2 = await mount({ bridge: () => second.bridge, createFileEngine: scriptedFileEngine().factory, createVaultEngine: reporting });
+    await until(() => second.calls.headlessDone.length > 0);
+    expect(second.calls.recordLauncherRefresh.at(-1)).toMatchObject({ outcome: 'failed', reason: 'vault: NETWORK vault unreachable' });
+    expect(second.calls.updateLauncherSnapshot).toHaveLength(0);
+    root2.unmount();
+  });
+
   it('reports a throwing cycle as failed with its reason, still stamps the heartbeat, pushes no snapshot', async () => {
     seedStorage(ls);
     const { bridge, calls } = fakeBridge();

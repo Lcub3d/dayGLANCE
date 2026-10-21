@@ -66,6 +66,7 @@ import { planFrameNudge, resolveFrameNudgeAnswer } from './utils/frameNudge.js';
 import { getOverdueTasks as collectOverdueTasks } from './utils/getOverdueTasks.js';
 import { backupFingerprint, readLastRemoteBackup, writeLastRemoteBackup, canSkipRemoteUpload } from './utils/backupDedupe.js';
 import { recordLoadFailure } from './utils/loadFailures.js';
+import { detachDeletedProject, reparentDeletedGoal, clearDeletedMemberRefs } from './utils/deleteCascade.js';
 import { parseICS, parseDatetime, filterByDateWindow, expandMultiDayEvent } from './utils/icsParser.js';
 import { buildCalendarProxyUrl } from './utils/calendarProxyUrl.js';
 import { absorbCalendarDays, absorbCalendarWindow, readCalendarProjectionCache, writeCalendarProjectionCache } from './utils/calendarProjectionCache.js';
@@ -1200,10 +1201,24 @@ const DayPlanner = () => {
     desktopSpace, setDesktopSpace, toggleDesktopSpace,
     showGoalsDashboard, setShowGoalsDashboard,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
-    addGoal, updateGoal, deleteGoal,
+    addGoal, updateGoal, deleteGoal: deleteGoalEntity,
     addArea, updateArea, deleteArea, reorderAreas,
-    addProject, updateProject, deleteProject, moveProject,
+    addProject, updateProject, deleteProject: deleteProjectEntity, moveProject,
   } = useGoalsProjects();
+  // Deleting a project/goal must also clean the rows that point at it, or they
+  // become invisible: a task keeps its projectId and the Inbox treats it as a
+  // project task; a project keeps its goalId and belongs to neither the goal's
+  // list nor the standalone one. These wrappers are what the rest of the app
+  // calls, so the UI, the intent transports and the MCP write layer all reach
+  // the same cascade (utils/deleteCascade.js).
+  const deleteProject = useCallback((projectId) => {
+    detachDeletedProject(projectId, { setTasks, setUnscheduledTasks, setRecurringTasks, setRecycleBin });
+    deleteProjectEntity(projectId);
+  }, [deleteProjectEntity, setTasks, setUnscheduledTasks, setRecurringTasks, setRecycleBin]);
+  const deleteGoal = useCallback((goalId) => {
+    reparentDeletedGoal(goalId, { setProjects });
+    deleteGoalEntity(goalId);
+  }, [deleteGoalEntity, setProjects]);
   // JOBO ledger (docs/jobo-ledger-persistence.md). The hook is the only
   // writer. `joboRecords` is undefined until the ledger has loaded, and the
   // sync payload omits the collection while it is: undefined means "this
@@ -1472,6 +1487,27 @@ const DayPlanner = () => {
     frameAdjustTimeField, setFrameAdjustTimeField,
     frameScheduleModal, setFrameScheduleModal,
   } = useGTDFrames();
+
+  // Multi-user: a member is soft-deleted from the roster (`users[].deleted`),
+  // and the rows assigned to them keep the syncId. isVisibleForUser only shows
+  // a task/project/goal to the members in assignedUserSyncIds (or to everyone
+  // when the list is empty), so a reference to a deleted member hides the row
+  // from EVERY remaining user. Habits/routines/frames use ownerSyncId instead.
+  // Clearing the reference makes the row unassigned; utils/deleteCascade.js
+  // also stamps the repair so it wins the next merge.
+  useEffect(() => {
+    if (!dataLoaded || !multiUserEnabled) return;
+    const deletedUserSyncIds = users
+      .filter(user => user.deleted)
+      .map(user => String(user.syncId ?? user.id));
+    if (deletedUserSyncIds.length === 0) return;
+    clearDeletedMemberRefs(deletedUserSyncIds, {
+      setTasks, setUnscheduledTasks, setRecurringTasks, setRecycleBin,
+      setProjects, setGoals, setHabits, setRoutineDefinitions, setTodayRoutines, setGtdFrames,
+    });
+    // The setters are stable; this runs once per roster load, not per render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataLoaded, multiUserEnabled, users]);
 
   const { undoToast, setUndoToast, pushUndo, pushUndoAction, performUndo, performRedo } = useUndo({
     tasks, unscheduledTasks, recycleBin, recurringTasks, gtdFrames,
@@ -1840,6 +1876,8 @@ const DayPlanner = () => {
     filterByTags,
     filteredUnscheduledTasks,
     filteredTodayTasks,
+    liveInboxTagFilter,
+    liveInboxProjectFilter,
   } = useComputedViews({
     tasks,
     unscheduledTasks,
@@ -1852,6 +1890,7 @@ const DayPlanner = () => {
     hideStandaloneTasksInbox,
     inboxTagFilter,
     inboxProjectFilter,
+    projects,
     goalsProjectsEnabled,
     isVisibleForUser,
   });
@@ -7561,8 +7600,13 @@ const DayPlanner = () => {
     hideCompletedInbox, setHideCompletedInbox,
     hideProjectTasksInbox, setHideProjectTasksInbox,
     hideStandaloneTasksInbox, setHideStandaloneTasksInbox,
-    inboxTagFilter, setInboxTagFilter,
-    inboxProjectFilter, setInboxProjectFilter,
+    // The FILTER UIs get the selections that still resolve
+    // (useComputedViews.liveInbox*): a chip whose project/tag is gone matches
+    // nothing, so it must not light the "filter is active" dot or narrow a
+    // list. The setters still own the saved preference, which is what the
+    // persistence layer writes.
+    inboxTagFilter: liveInboxTagFilter, setInboxTagFilter,
+    inboxProjectFilter: liveInboxProjectFilter, setInboxProjectFilter,
     inboxArchivedExpanded, setInboxArchivedExpanded,
     priorityPromptDismissed, setPriorityPromptDismissed,
     sectionInfoDismissed, setSectionInfoDismissed,

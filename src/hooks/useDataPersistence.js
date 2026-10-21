@@ -25,7 +25,10 @@ const isSubscriptionImport = (t) =>
 import { isTrayMode } from '../utils/trayMode.js';
 import { repairLoadedGhostRows } from '../utils/obsidianGhostRows.js';
 import { recordLoadFailure, isLoadProtected } from '../utils/loadFailures.js';
+import { loadDailyNotes } from '../utils/dailyNotesStore.js';
+import { mergeDailyNotes } from '@glance-apps/sync';
 import { writeItem, getWriteFailures } from '../utils/storageWrites.js';
+import { stripProjectRefs, stripGoalRefs } from '../utils/referentialIntegrity.js';
 
 // What the save pass last wrote, per key (#2140). Every change used to
 // re-serialize every bucket, re-parse and re-stamp all five task-shaped arrays
@@ -118,14 +121,37 @@ export default function useDataPersistence({
         console.warn(`[load] normalization write-back skipped for ${key}:`, error);
       }
     };
+    // Deletion tombstones decide the boot self-heal (#2137): a row that still
+    // points at a deleted project or goal is invisible state (the Inbox hides
+    // "project tasks"; a project whose goal is gone sits in neither the goal's
+    // list nor the standalone one). Only a TOMBSTONE makes a reference dangling
+    // — never an id missing from the local lists (utils/referentialIntegrity.js
+    // has the reasoning). Both reads are guarded: a corrupt tombstone map is
+    // "no information", so nothing is stripped on its word.
+    const readTombstones = (key) => {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      } catch { return {}; }
+    };
+    const deletedProjectIds = readTombstones('day-planner-deleted-project-ids');
+    const deletedGoalIds = readTombstones('day-planner-deleted-goal-ids');
     const parseTaskList = (key) => {
       const raw = localStorage.getItem(key);
       if (!raw) return [];
-      return JSON.parse(raw).map(t => ({
+      const parsed = JSON.parse(raw).map(t => ({
         ...t,
         notes: t.notes ?? '',
         subtasks: t.subtasks ?? []
       }));
+      // Repair before the write-back below so the save pass finds storage in
+      // step with state and cannot read the repair as a user edit (which would
+      // re-stamp lastModified). Unstamped on purpose: every device derives the
+      // same repair from the same tombstone, so a tie in last-writer-wins
+      // converges instead of flipping.
+      return stripProjectRefs(parsed, deletedProjectIds);
     };
 
     // Parse existing data and normalize defaults so localStorage and React
@@ -170,7 +196,11 @@ export default function useDataPersistence({
 
     bucket(['day-planner-recycle-bin'], () => {
       const recycleBinData = localStorage.getItem('day-planner-recycle-bin');
-      if (recycleBinData) setRecycleBin(JSON.parse(recycleBinData));
+      if (!recycleBinData) return;
+      const parsedBin = JSON.parse(recycleBinData);
+      const prunedBin = stripProjectRefs(parsedBin, deletedProjectIds);
+      if (prunedBin !== parsedBin) writeBack('day-planner-recycle-bin', JSON.stringify(prunedBin));
+      setRecycleBin(prunedBin);
     });
 
     // The theme is not reloaded here: App reads its preference at start
@@ -191,16 +221,13 @@ export default function useDataPersistence({
       const completedTaskUidsData = localStorage.getItem('day-planner-task-completed-uids');
       if (completedTaskUidsData) setCompletedTaskUids(new Set(JSON.parse(completedTaskUidsData)));
     });
-    // App's useState initializer has already read the notes (and recorded a
-    // failure there if they were unreadable); this re-read keeps a reload of
-    // loadData in step with storage.
-    bucket(['day-planner-daily-notes'], () => {
-      const dailyNotesData = localStorage.getItem('day-planner-daily-notes');
-      if (dailyNotesData) setDailyNotes(JSON.parse(dailyNotesData));
-    });
     bucket(['day-planner-recurring-tasks'], () => {
       const recurringTasksData = localStorage.getItem('day-planner-recurring-tasks');
-      if (recurringTasksData) setRecurringTasks(JSON.parse(recurringTasksData));
+      if (!recurringTasksData) return;
+      const parsedRecurring = JSON.parse(recurringTasksData);
+      const prunedRecurring = stripProjectRefs(parsedRecurring, deletedProjectIds);
+      if (prunedRecurring !== parsedRecurring) writeBack('day-planner-recurring-tasks', JSON.stringify(prunedRecurring));
+      setRecurringTasks(prunedRecurring);
     });
 
     // Load routines
@@ -278,7 +305,15 @@ export default function useDataPersistence({
     });
     bucket(['day-planner-projects'], () => {
       const projectsData = localStorage.getItem('day-planner-projects');
-      if (projectsData) setProjects(JSON.parse(projectsData));
+      if (!projectsData) return;
+      const parsedProjects = JSON.parse(projectsData);
+      // Same tombstone-only repair as the task lists, for a project whose goal
+      // was deleted (it would otherwise belong to neither the goal's list nor
+      // the standalone one). Repaired before state is set and written back, so
+      // the persist pass does not re-stamp it as an edit.
+      const prunedProjects = stripGoalRefs(parsedProjects, deletedGoalIds);
+      if (prunedProjects !== parsedProjects) writeBack('day-planner-projects', JSON.stringify(prunedProjects));
+      setProjects(prunedProjects);
     });
     bucket(['day-planner-areas'], () => {
       const areasData = localStorage.getItem('day-planner-areas');
@@ -288,9 +323,21 @@ export default function useDataPersistence({
       const goalsProjectsEnabledData = localStorage.getItem('day-planner-goals-projects-enabled');
       if (goalsProjectsEnabledData !== null) setGoalsProjectsEnabled(JSON.parse(goalsProjectsEnabledData));
     });
+    // Daily notes come from IndexedDB, asynchronously (utils/dailyNotesStore.js,
+    // which also moves them out of localStorage on the first run). dataLoaded
+    // waits for them, so nothing gated on it (the save pass, both sync tiers,
+    // backups) ever sees the map before it has loaded. Edits made in the
+    // moment before are kept: the loaded map and the live one merge per date,
+    // newer lastModified winning, as sync merges them.
+    //
     // Loaded, though not necessarily in full: whatever could not be read is
     // protected (utils/loadFailures.js) and the banner says so.
-    setDataLoaded(true);
+    return loadDailyNotes({ readOnly: isTrayMode })
+      .then(({ notes }) => {
+        setDailyNotes(prev => mergeDailyNotes(notes, prev || {}).merged);
+      })
+      .catch((error) => console.error('[load] daily notes:', error))
+      .finally(() => setDataLoaded(true));
   };
 
   const saveData = () => {

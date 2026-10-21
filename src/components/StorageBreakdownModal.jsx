@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { getStorageUsage, getIndexedDbUsage, formatBytes } from '../utils/storage.js';
+import { projectStorage, describeTimeLeft, readSamples, WARN_DAYS } from '../utils/storageProjection.js';
+import { dateToString } from '../utils/taskUtils.js';
 
 const StorageBreakdownModal = () => {
   const { t } = useTranslation();
@@ -25,6 +27,14 @@ const StorageBreakdownModal = () => {
 
   const { totalBytes, entries } = getStorageUsage();
   const warn = totalBytes > 4 * 1024 * 1024;
+  // The trend from the daily samples (utils/storageProjection.js, #2141).
+  const projection = projectStorage(readSamples(), { today: dateToString(new Date()), current: totalBytes });
+  const forecast = (() => {
+    if (projection.status === 'pending') return t('storage.projectionPending');
+    if (projection.status === 'flat') return t('storage.projectionFlat');
+    const { unit, count } = describeTimeLeft(projection.daysLeft);
+    return t(unit === 'days' ? 'storage.projectionDays' : 'storage.projectionMonths', { count });
+  })();
   const labels = {
     // The Todoist CACHE moved to IndexedDB; this key now holds only the pending
     // completion receipts, which are deliberately left in localStorage so a
@@ -66,6 +76,9 @@ const StorageBreakdownModal = () => {
                   targets, the tightest being the iOS and Android webviews. */}
               <div className={`w-full h-2 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} mb-4`}>
                 <div className={`h-full rounded-full transition-all ${warn ? 'bg-orange-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(100, totalBytes / (5 * 1024 * 1024) * 100)}%` }} />
+              </div>
+              <div className={`text-xs mb-3 ${projection.status === 'growing' && projection.daysLeft <= WARN_DAYS ? 'text-orange-500' : textSecondary}`}>
+                {forecast}
               </div>
               {databaseBytes != null && (
                 <div className={`text-xs mb-4 ${textSecondary}`}>

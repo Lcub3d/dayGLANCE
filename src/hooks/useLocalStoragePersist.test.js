@@ -191,9 +191,11 @@ describe('useLocalStoragePersist leaves unreadable daily notes alone', () => {
     // Fresh instances of both, so the hook and the test share one registry.
     vi.resetModules();
     const { default: persist } = await import('./useLocalStoragePersist.js');
-    const { recordLoadFailure } = await import('../utils/loadFailures.js');
+    const { loadDailyNotes } = await import('../utils/dailyNotesStore.js');
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    recordLoadFailure('day-planner-daily-notes', new Error('bad json'), store['day-planner-daily-notes']);
+    // No IndexedDB under node: the notes stay in localStorage, where the load
+    // records the unreadable value as a failure (utils/loadFailures.js).
+    await loadDailyNotes();
     const dailyNotes = {};
     persist(baseProps({ dailyNotes }));
     mount();
@@ -224,9 +226,32 @@ describe('useLocalStoragePersist at quota', () => {
     vi.resetModules();
     const { default: persist } = await import('./useLocalStoragePersist.js');
     const { getWriteFailures } = await import('../utils/storageWrites.js');
+    const { loadDailyNotes } = await import('../utils/dailyNotesStore.js');
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    await loadDailyNotes();
     persist(baseProps());
     expect(mount).not.toThrow();
     expect(getWriteFailures()).toContain('day-planner-daily-notes');
+  });
+});
+
+// #2141: the notes load asynchronously, and the map in state before that is
+// not the user's. Nothing is written, or stamped, until they have loaded.
+describe('useLocalStoragePersist before the notes have loaded', () => {
+  beforeEach(() => {
+    effects.length = 0;
+    globalThis.localStorage = { setItem: vi.fn(), getItem: vi.fn(() => null), removeItem: vi.fn() };
+    globalThis.window = {};
+  });
+  afterEach(() => { delete globalThis.localStorage; delete globalThis.window; });
+
+  it('writes and stamps nothing for the notes', async () => {
+    vi.resetModules();
+    const { default: persist } = await import('./useLocalStoragePersist.js');
+    persist(baseProps({ dailyNotes: {} }));
+    mount();
+    const keys = globalThis.localStorage.setItem.mock.calls.map(([k]) => k);
+    expect(keys).not.toContain('day-planner-daily-notes');
+    expect(keys).not.toContain('day-planner-local-edit-at');
   });
 });

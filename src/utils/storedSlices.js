@@ -94,8 +94,11 @@ export const readSyncRetentionDays = () => {
 };
 
 /**
- * Daily notes. Unreadable is not empty: the failure is recorded so the notes
- * persist effect does not write {} over the stored copy (utils/loadFailures.js).
+ * Daily notes, as an initial value only. They live in IndexedDB since #2141
+ * and arrive with loadData (utils/dailyNotesStore.js); this reads the
+ * localStorage copy a device has until that first load moves it, and {} after.
+ * Unreadable is not empty: the failure is recorded so nothing writes {} over
+ * the stored copy (utils/loadFailures.js).
  */
 export const readDailyNotes = () => {
   let saved = null;

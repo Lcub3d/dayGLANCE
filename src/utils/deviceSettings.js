@@ -77,6 +77,10 @@ const EXCLUDED_KEYS = new Set([
   'day-planner-task-calendar-auth',
   'day-planner-ics-calendars',
   'day-planner-primary-cal-meta',
+  // Daily notes are a first-class `dailyNotes` field now that they live in
+  // IndexedDB (#2141). A restore still reads this key from older backups
+  // (utils/dailyNotesStore.js restoreDailyNotesFromBackup).
+  'day-planner-daily-notes',
 
   // Volatile markers, sync cursors, and caches — stale after a restore; the
   // owning subsystems rebuild them on their own.
@@ -99,6 +103,10 @@ const EXCLUDED_KEYS = new Set([
   'day-planner-trmnl-last-synced',
   'day-planner-trmnl-push-state',
   'day-planner-steps-cache',
+  // Storage trend samples and the last warning (utils/storageProjection.js):
+  // this device's measurements, and a daily change would defeat backup dedupe.
+  'day-planner-storage-samples',
+  'day-planner-storage-projection-warned',
 ]);
 
 const isCapturable = (key) =>

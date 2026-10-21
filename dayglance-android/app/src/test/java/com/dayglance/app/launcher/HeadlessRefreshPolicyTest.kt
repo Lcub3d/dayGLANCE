@@ -34,7 +34,7 @@ class HeadlessRefreshPolicyTest {
     @Test
     fun `an unreported run is named by what stopped it, abort first`() {
         assertEquals("aborted" to "app opened", HeadlessRefreshPolicy.unreportedOutcome(aborted = true, timedOut = true, rendererGone = true))
-        assertEquals("failed" to "timed out after 60 s", HeadlessRefreshPolicy.unreportedOutcome(false, true, false))
+        assertEquals("failed" to "timed out after 120 s", HeadlessRefreshPolicy.unreportedOutcome(false, true, false))
         assertEquals("failed" to "the WebView renderer died", HeadlessRefreshPolicy.unreportedOutcome(false, false, true))
         assertEquals("failed" to "the run ended without reporting", HeadlessRefreshPolicy.unreportedOutcome(false, false, false))
     }

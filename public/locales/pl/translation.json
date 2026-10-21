@@ -797,7 +797,10 @@
     "theme": "Motyw",
     "themeSystem": "Systemowy",
     "glanceWebdavLog": "Dziennik zdarzeń WebDAV",
-    "aiNeedsKey": "Dodaj powyżej klucz API, aby je włączyć."
+    "aiNeedsKey": "Dodaj powyżej klucz API, aby je włączyć.",
+    "binAutoEmpty": "Automatycznie opróżniaj kosz",
+    "binAutoEmptyAfter": "Po {{days}} dniach",
+    "binAutoEmptyHint": "Zadania usunięte dawniej zostaną trwale usunięte na wszystkich synchronizowanych urządzeniach."
   },
   "dailyNotes": {
     "quickNotes": "Szybkie notatki",
@@ -1407,7 +1410,22 @@
     "loadFailedDownload": "Pobierz kopię",
     "loadFailedDiscard": "Odrzuć",
     "loadFailedDiscardConfirm": "Odrzucić nieczytelne dane? Twoje bieżące dane zostaną zapisane w ich miejsce i nie da się tego cofnąć. Najpierw pobierz kopię, jeśli może się przydać.",
-    "seeWhatIsUsingSpace": "Zobacz, co zajmuje miejsce"
+    "seeWhatIsUsingSpace": "Zobacz, co zajmuje miejsce",
+    "projectionPending": "Prognoza pojawi się po tygodniu korzystania.",
+    "projectionFlat": "Wykorzystanie pamięci lokalnej nie rośnie.",
+    "projectionWarningFull": "Pamięć lokalna jest zapełniona w ponad 80%. Otwórz „Zużycie pamięci” w Ustawieniach, aby zobaczyć, co ją zajmuje.",
+    "projectionDays_one": "Przy obecnym tempie pamięć lokalna zapełni się za około {{count}} dzień.",
+    "projectionMonths_one": "Przy obecnym tempie pamięć lokalna zapełni się za około {{count}} miesiąc.",
+    "projectionWarningSoon_one": "Pamięć lokalna się zapełnia: przy obecnym tempie będzie pełna za około {{count}} dzień. Otwórz „Zużycie pamięci” w Ustawieniach, aby zobaczyć, co ją zajmuje.",
+    "projectionDays_few": "Przy obecnym tempie pamięć lokalna zapełni się za około {{count}} dni.",
+    "projectionMonths_few": "Przy obecnym tempie pamięć lokalna zapełni się za około {{count}} miesiące.",
+    "projectionWarningSoon_few": "Pamięć lokalna się zapełnia: przy obecnym tempie będzie pełna za około {{count}} dni. Otwórz „Zużycie pamięci” w Ustawieniach, aby zobaczyć, co ją zajmuje.",
+    "projectionDays_many": "Przy obecnym tempie pamięć lokalna zapełni się za około {{count}} dni.",
+    "projectionMonths_many": "Przy obecnym tempie pamięć lokalna zapełni się za około {{count}} miesięcy.",
+    "projectionWarningSoon_many": "Pamięć lokalna się zapełnia: przy obecnym tempie będzie pełna za około {{count}} dni. Otwórz „Zużycie pamięci” w Ustawieniach, aby zobaczyć, co ją zajmuje.",
+    "projectionDays_other": "Przy obecnym tempie pamięć lokalna zapełni się za około {{count}} dnia.",
+    "projectionMonths_other": "Przy obecnym tempie pamięć lokalna zapełni się za około {{count}} miesiąca.",
+    "projectionWarningSoon_other": "Pamięć lokalna się zapełnia: przy obecnym tempie będzie pełna za około {{count}} dnia. Otwórz „Zużycie pamięci” w Ustawieniach, aby zobaczyć, co ją zajmuje."
   },
   "weeklyReview": {
     "tasksDone": "Wykonane zadania",

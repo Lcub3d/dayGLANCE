@@ -30,6 +30,7 @@ describe('collectDeviceSettings', () => {
       // excluded: volatile cursors
       'day-planner-cloud-sync-last-synced': '2026-07-22T00:00:00Z',
       'day-planner-steps-cache': '{"big":"cache"}',
+      'day-planner-storage-samples': '[{"date":"2026-10-19","bytes":1}]',
       'day-planner-auto-backup-remote-fingerprint': '{"fingerprint":"f"}',
       // legacy unprefixed settings — the inbox filter bar and dismissals
       'inboxPriorityFilter': '"high"',
@@ -56,7 +57,8 @@ describe('collectDeviceSettings', () => {
     expect(out['day-planner-default-view']).toBe('"sched"');
     expect(out['day-planner-weather-zip']).toBe('80301');
     expect(out['day-planner-sched-filter-presets']).toBe('[{"id":"1"}]');
-    expect(out['day-planner-daily-notes']).toBe('{"2026-07-22":{"text":"hi"}}');
+    // Daily notes are a first-class backup field now (#2141), not a device setting.
+    expect(out['day-planner-daily-notes']).toBeUndefined();
     expect(out['day-planner-deleted-task-ids']).toBe('{"t1":"2026-07-01"}');
   });
 
@@ -66,6 +68,8 @@ describe('collectDeviceSettings', () => {
     expect(out['day-planner-cloud-sync-config']).toBeUndefined();
     expect(out['day-planner-cloud-sync-last-synced']).toBeUndefined();
     expect(out['day-planner-steps-cache']).toBeUndefined();
+    // This device's storage samples change daily and would defeat backup dedupe.
+    expect(out['day-planner-storage-samples']).toBeUndefined();
     // A backup marker: captured, it would change the payload after every upload.
     expect(out['day-planner-auto-backup-remote-fingerprint']).toBeUndefined();
     expect(out['someOtherApp-key']).toBeUndefined();

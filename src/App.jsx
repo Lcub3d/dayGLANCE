@@ -54,6 +54,7 @@ import { widgetDayTasks } from './utils/widgetNativeEvents.js';
 import { useWidgetNativeEvents } from './hooks/useWidgetNativeEvents.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
+import useStorageProjection from './hooks/useStorageProjection.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, extractShareTitle } from './utils/textFormatting.jsx';
 import { msUntilMidnightRefresh, rememberViewsForMidnight, readMidnightViews, clearMidnightViews } from './utils/midnightRefresh.js';
 import { computeAvailableSlots as computeAvailableSlotsPure, adjustPastConflicts } from './utils/dayOccupancy.js';
@@ -64,8 +65,11 @@ import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLoca
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
 import { planFrameNudge, resolveFrameNudgeAnswer } from './utils/frameNudge.js';
 import { getOverdueTasks as collectOverdueTasks } from './utils/getOverdueTasks.js';
+import { getStoredDailyNotes, flushDailyNotes, restoreDailyNotesFromBackup } from './utils/dailyNotesStore.js';
+import { readBinAutoEmptyDays, BIN_AUTO_EMPTY_KEY } from './utils/recycleBinRetention.js';
 import { backupFingerprint, readLastRemoteBackup, writeLastRemoteBackup, canSkipRemoteUpload } from './utils/backupDedupe.js';
 import { recordLoadFailure } from './utils/loadFailures.js';
+import { detachDeletedProject, reparentDeletedGoal, clearDeletedMemberRefs } from './utils/deleteCascade.js';
 import { parseICS, parseDatetime, filterByDateWindow, expandMultiDayEvent } from './utils/icsParser.js';
 import { buildCalendarProxyUrl } from './utils/calendarProxyUrl.js';
 import { absorbCalendarDays, absorbCalendarWindow, readCalendarProjectionCache, writeCalendarProjectionCache } from './utils/calendarProjectionCache.js';
@@ -640,6 +644,11 @@ const DayPlanner = () => {
     return saved !== null ? JSON.parse(saved) : 14;
   });
   useEffect(() => { writeItem('day-planner-inbox-auto-archive-days', JSON.stringify(inboxAutoArchiveDays)); }, [inboxAutoArchiveDays]);
+  // Recycle Bin auto-empty (#2141; utils/recycleBinRetention.js). Device-local
+  // like the inbox setting above, but its effect is not: the purge writes
+  // deletion tombstones, which sync carries to every device.
+  const [binAutoEmptyDays, setBinAutoEmptyDays] = useState(readBinAutoEmptyDays);
+  useEffect(() => { writeItem(BIN_AUTO_EMPTY_KEY, JSON.stringify(binAutoEmptyDays)); }, [binAutoEmptyDays]);
   // Live Activity (iOS): OPT-IN, default off — the compact island widens the
   // sensor housing enough to hide the cellular/wifi status icons, so an
   // all-day ambient activity must be the user's choice. Device-local (not
@@ -1200,10 +1209,24 @@ const DayPlanner = () => {
     desktopSpace, setDesktopSpace, toggleDesktopSpace,
     showGoalsDashboard, setShowGoalsDashboard,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
-    addGoal, updateGoal, deleteGoal,
+    addGoal, updateGoal, deleteGoal: deleteGoalEntity,
     addArea, updateArea, deleteArea, reorderAreas,
-    addProject, updateProject, deleteProject, moveProject,
+    addProject, updateProject, deleteProject: deleteProjectEntity, moveProject,
   } = useGoalsProjects();
+  // Deleting a project/goal must also clean the rows that point at it, or they
+  // become invisible: a task keeps its projectId and the Inbox treats it as a
+  // project task; a project keeps its goalId and belongs to neither the goal's
+  // list nor the standalone one. These wrappers are what the rest of the app
+  // calls, so the UI, the intent transports and the MCP write layer all reach
+  // the same cascade (utils/deleteCascade.js).
+  const deleteProject = useCallback((projectId) => {
+    detachDeletedProject(projectId, { setTasks, setUnscheduledTasks, setRecurringTasks, setRecycleBin });
+    deleteProjectEntity(projectId);
+  }, [deleteProjectEntity, setTasks, setUnscheduledTasks, setRecurringTasks, setRecycleBin]);
+  const deleteGoal = useCallback((goalId) => {
+    reparentDeletedGoal(goalId, { setProjects });
+    deleteGoalEntity(goalId);
+  }, [deleteGoalEntity, setProjects]);
   // JOBO ledger (docs/jobo-ledger-persistence.md). The hook is the only
   // writer. `joboRecords` is undefined until the ledger has loaded, and the
   // sync payload omits the collection while it is: undefined means "this
@@ -1473,6 +1496,27 @@ const DayPlanner = () => {
     frameScheduleModal, setFrameScheduleModal,
   } = useGTDFrames();
 
+  // Multi-user: a member is soft-deleted from the roster (`users[].deleted`),
+  // and the rows assigned to them keep the syncId. isVisibleForUser only shows
+  // a task/project/goal to the members in assignedUserSyncIds (or to everyone
+  // when the list is empty), so a reference to a deleted member hides the row
+  // from EVERY remaining user. Habits/routines/frames use ownerSyncId instead.
+  // Clearing the reference makes the row unassigned; utils/deleteCascade.js
+  // also stamps the repair so it wins the next merge.
+  useEffect(() => {
+    if (!dataLoaded || !multiUserEnabled) return;
+    const deletedUserSyncIds = users
+      .filter(user => user.deleted)
+      .map(user => String(user.syncId ?? user.id));
+    if (deletedUserSyncIds.length === 0) return;
+    clearDeletedMemberRefs(deletedUserSyncIds, {
+      setTasks, setUnscheduledTasks, setRecurringTasks, setRecycleBin,
+      setProjects, setGoals, setHabits, setRoutineDefinitions, setTodayRoutines, setGtdFrames,
+    });
+    // The setters are stable; this runs once per roster load, not per render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataLoaded, multiUserEnabled, users]);
+
   const { undoToast, setUndoToast, pushUndo, pushUndoAction, performUndo, performRedo } = useUndo({
     tasks, unscheduledTasks, recycleBin, recurringTasks, gtdFrames,
     setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks, setGtdFrames,
@@ -1509,7 +1553,10 @@ const DayPlanner = () => {
     setTasks, setUnscheduledTasks,
     playUISound,
     onStorageFull: () => setUndoToast({ message: t('backup.storageFull'), kind: 'warning' }),
+    autoEmptyDays: binAutoEmptyDays, dataLoaded, isTrayMode,
   });
+  // A daily sample of local-storage use and a warning before it is full (#2141).
+  useStorageProjection({ dataLoaded, isTrayMode, setUndoToast, t });
 
   // AI configuration, voice input, and weekly review state
   const {
@@ -1840,6 +1887,8 @@ const DayPlanner = () => {
     filterByTags,
     filteredUnscheduledTasks,
     filteredTodayTasks,
+    liveInboxTagFilter,
+    liveInboxProjectFilter,
   } = useComputedViews({
     tasks,
     unscheduledTasks,
@@ -1852,6 +1901,7 @@ const DayPlanner = () => {
     hideStandaloneTasksInbox,
     inboxTagFilter,
     inboxProjectFilter,
+    projects,
     goalsProjectsEnabled,
     isVisibleForUser,
   });
@@ -4590,6 +4640,8 @@ const DayPlanner = () => {
         weatherTempUnit: localStorage.getItem('day-planner-weather-temp-unit') || 'fahrenheit',
         habits: JSON.parse(localStorage.getItem('day-planner-habits') || '[]'),
         habitLogs: JSON.parse(localStorage.getItem('day-planner-habit-logs') || '{}'),
+        // Daily notes (IndexedDB since #2141); manual exports never carried them.
+        dailyNotes: getStoredDailyNotes(),
         // Your notes on calendar events live on this device only, so a backup
         // is how they reach a new one (utils/eventNotes.js).
         eventNotes: readEventNotes(),
@@ -4679,6 +4731,9 @@ const DayPlanner = () => {
       // focus log, tombstones, …). Local backups only — cloud sync stays
       // device-agnostic by design; these payloads exist to resurrect ONE
       // device after a profile wipe.
+      // First-class since the notes moved to IndexedDB (#2141). Omitted, not
+      // {}, while they have not loaded (utils/dailyNotesStore.js).
+      dailyNotes: getStoredDailyNotes(),
       deviceSettings: collectDeviceSettings(),
     }
   });
@@ -4781,6 +4836,8 @@ const DayPlanner = () => {
       // so the post-reload cycle full-pulls and LWW-merges (never blind-pushes).
       resetVaultSyncCursor();
       applyEngineData(data);
+      // The notes write is asynchronous (IndexedDB); let it land first.
+      await flushDailyNotes();
       window.location.reload();
     } catch (err) {
       alert(t('backup.restoreFailed', { error: err.message }));
@@ -4800,6 +4857,7 @@ const DayPlanner = () => {
       // restoreFromAutoBackup for the stale-snapshot/stale-HWM hazard).
       resetVaultSyncCursor();
       applyEngineData(backup.data);
+      await flushDailyNotes();
       window.location.reload();
     } catch (err) {
       alert(t('backup.remoteRestoreFailed', { error: err.message }));
@@ -4853,7 +4911,7 @@ const DayPlanner = () => {
   // Write a backup payload's data section back into localStorage. Shared by
   // the file-based restore (restoreBackup) and the folder-based restore
   // (restoreFromBackupFolder); callers handle cursor reset + reload.
-  const applyBackupToLocalStorage = (data) => {
+  const applyBackupToLocalStorage = async (data) => {
     // Device-scoped settings snapshot (present in folder/auto backups, absent
     // from manual exports). Applied first so the explicit fields below — which
     // carry their own normalization (habits/routines enable logic) — win any
@@ -4910,6 +4968,10 @@ const DayPlanner = () => {
       else localStorage.removeItem('gettingStartedDismissed');
     }
     if (data.onboardingProgress) localStorage.setItem('onboardingProgress', JSON.stringify(data.onboardingProgress));
+    // Daily notes live in IndexedDB (#2141): replace them, from the field or,
+    // for an older backup, from the localStorage key in its deviceSettings,
+    // and wait for the write before the caller reloads.
+    await restoreDailyNotesFromBackup(data);
   };
 
   // Restore data from backup file. Falls back to the staged pendingBackupFile
@@ -4932,7 +4994,7 @@ const DayPlanner = () => {
         }
 
         await restoreJoboOrThrow(backup.data);
-        applyBackupToLocalStorage(backup.data);
+        await applyBackupToLocalStorage(backup.data);
 
         // Full-state replacement → invalidate the vault sync cursors (see
         // restoreFromAutoBackup for the stale-snapshot/stale-HWM hazard).
@@ -4971,7 +5033,7 @@ const DayPlanner = () => {
         return;
       }
       await restoreJoboOrThrow(payload.data);
-      applyBackupToLocalStorage(payload.data);
+      await applyBackupToLocalStorage(payload.data);
       // Re-arm folder backup after the reload regardless of what the backed-up
       // config said — the user just restored from this folder, so keep writing
       // to it. The handle is already persisted by openForRestore.
@@ -7546,6 +7608,7 @@ const DayPlanner = () => {
     use24HourClock, setUse24HourClock,
     liveActivityEnabled, setLiveActivityEnabled,
     inboxAutoArchiveDays, setInboxAutoArchiveDays,
+    binAutoEmptyDays, setBinAutoEmptyDays,
     weekStartDay, setWeekStartDay,
     homeTimezone, setHomeTimezone,
     weekTimelineStartHour, setWeekTimelineStartHour,
@@ -7561,8 +7624,13 @@ const DayPlanner = () => {
     hideCompletedInbox, setHideCompletedInbox,
     hideProjectTasksInbox, setHideProjectTasksInbox,
     hideStandaloneTasksInbox, setHideStandaloneTasksInbox,
-    inboxTagFilter, setInboxTagFilter,
-    inboxProjectFilter, setInboxProjectFilter,
+    // The FILTER UIs get the selections that still resolve
+    // (useComputedViews.liveInbox*): a chip whose project/tag is gone matches
+    // nothing, so it must not light the "filter is active" dot or narrow a
+    // list. The setters still own the saved preference, which is what the
+    // persistence layer writes.
+    inboxTagFilter: liveInboxTagFilter, setInboxTagFilter,
+    inboxProjectFilter: liveInboxProjectFilter, setInboxProjectFilter,
     inboxArchivedExpanded, setInboxArchivedExpanded,
     priorityPromptDismissed, setPriorityPromptDismissed,
     sectionInfoDismissed, setSectionInfoDismissed,

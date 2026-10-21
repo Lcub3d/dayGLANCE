@@ -20,7 +20,7 @@ export const SECTION_SEARCH = {
   routines: ['settings.routines', 'settings.enableRoutines'],
   habits: ['settings.habitTracking', 'settings.enableHabitTracking'],
   multiUser: ['settings.multiUser', 'settings.multiUserMode', 'settings.multiUserPeople'],
-  inbox: ['settings.inbox', 'settings.inboxAutoArchive'],
+  inbox: ['settings.inbox', 'settings.inboxAutoArchive', 'settings.binAutoEmpty'],
   followUpTag: ['followUp.settingTitle', 'followUp.settingLabel'],
   experimental: ['settings.experimental', 'settings.enableJobo', 'settings.enableAspire'],
   notifications: ['settings.notifications', 'reminders.title', 'weeklyReview.title', 'reminders.hyperGlanceSessions', 'reminders.scheduledTasks', 'reminders.calendarEvents', 'reminders.morningReminderAt'],

@@ -90,7 +90,9 @@ does not fetch) and the heartbeat, and reports. Then:
   main thread before the live one loads, and the root checks
   `headlessShouldAbort` at each phase boundary. The live instance's own start
   runs a cycle, so nothing is lost; waiting would only hold the splash.
-- `failed` with `timed out after 60 s`: the cap; the WebView is torn down;
+- `failed` with `timed out after 120 s`: the cap (an alive cycle has been
+  measured at 75 s, and a headless run adds the WebView boot); the WebView is
+  torn down;
 - a run that finds the renderer alive by the time it executes hands the
   REFRESH to it instead (the entry turns `queued`).
 

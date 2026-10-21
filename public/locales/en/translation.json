@@ -778,7 +778,10 @@
     "theme": "Theme",
     "themeSystem": "System",
     "glanceWebdavLog": "WebDAV event log",
-    "aiNeedsKey": "Add an API key above to turn these on."
+    "aiNeedsKey": "Add an API key above to turn these on.",
+    "binAutoEmpty": "Empty the Recycle Bin automatically",
+    "binAutoEmptyAfter": "After {{days}} days",
+    "binAutoEmptyHint": "Tasks deleted longer ago than this are removed for good, on every device you sync with."
   },
   "dailyNotes": {
     "quickNotes": "Quick Notes",

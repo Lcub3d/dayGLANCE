@@ -797,7 +797,10 @@
     "theme": "Motyw",
     "themeSystem": "Systemowy",
     "glanceWebdavLog": "Dziennik zdarzeń WebDAV",
-    "aiNeedsKey": "Dodaj powyżej klucz API, aby je włączyć."
+    "aiNeedsKey": "Dodaj powyżej klucz API, aby je włączyć.",
+    "binAutoEmpty": "Automatycznie opróżniaj kosz",
+    "binAutoEmptyAfter": "Po {{days}} dniach",
+    "binAutoEmptyHint": "Zadania usunięte dawniej zostaną trwale usunięte na wszystkich synchronizowanych urządzeniach."
   },
   "dailyNotes": {
     "quickNotes": "Szybkie notatki",

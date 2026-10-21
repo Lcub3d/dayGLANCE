@@ -4,6 +4,8 @@ import android.app.Notification
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.webkit.ConsoleMessage
 import android.webkit.RenderProcessGoneDetail
@@ -48,7 +50,7 @@ import org.json.JSONObject
  * that arrives while it waits. [HeadlessRefreshPolicy] decides what a run does
  * once the worker gets to execute: hand over to a renderer that has appeared
  * in the meantime, throttle (ten-minute floor between headless runs), or run
- * under a sixty-second cap.
+ * under a two-minute cap.
  *
  * The REVERSE LOCK: a WebView here shares localStorage and IndexedDB with the
  * app's. If the user opens the app during a run, [abortForLiveInstance] runs
@@ -143,6 +145,7 @@ class LauncherRefreshWorker(
             current = run
             run.webView = buildWebView(run)
             run.webView?.loadUrl("$ENTRY?headless=refresh&clientId=${android.net.Uri.encode(clientId)}")
+            Log.i(TAG, "headless refresh $clientId: WebView booted")
             true
         }
         if (!booted) { handToLive(store, clientId, System.currentTimeMillis()); return }
@@ -212,8 +215,13 @@ class LauncherRefreshWorker(
             cacheMode = WebSettings.LOAD_DEFAULT
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         }
+        // Delivered through the main Looper, NEVER through webView.post: a View
+        // that is not attached to a window holds its posted runnables until it
+        // is attached, and this WebView never is. The first device run hung on
+        // exactly that: every HTTP reply queued forever, the sync never
+        // finished, and the cap fired (2026-10-20).
         val bridge = HeadlessBridge(appContext, run) { json ->
-            run.webView?.post {
+            mainHandler.post {
                 run.webView?.evaluateJavascript("window.__dgNativeHttpDone && window.__dgNativeHttpDone($json)", null)
             }
         }
@@ -248,6 +256,7 @@ class LauncherRefreshWorker(
         private const val KEY_CLIENT_ID = "clientId"
         private const val NOTIFICATION_ID = 7310
         private const val ENTRY = "https://appassets.androidplatform.net/assets/web/index.html"
+        private val mainHandler = Handler(Looper.getMainLooper())
 
         /** The run in progress, if any; main thread writes. */
         @Volatile private var current: Run? = null

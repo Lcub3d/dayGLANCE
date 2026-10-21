@@ -801,7 +801,10 @@
     "theme": "Тема",
     "themeSystem": "Системна",
     "glanceWebdavLog": "Журнал подій WebDAV",
-    "aiNeedsKey": "Додайте ключ API вище, щоб увімкнути їх."
+    "aiNeedsKey": "Додайте ключ API вище, щоб увімкнути їх.",
+    "binAutoEmpty": "Автоматично очищати кошик",
+    "binAutoEmptyAfter": "Через {{days}} днів",
+    "binAutoEmptyHint": "Завдання, видалені раніше, буде остаточно вилучено на всіх пристроях, які ви синхронізуєте."
   },
   "dailyNotes": {
     "quickNotes": "Швидкі нотатки",

@@ -778,7 +778,10 @@
     "theme": "Tema",
     "themeSystem": "Sistema",
     "glanceWebdavLog": "Registo de eventos WebDAV",
-    "aiNeedsKey": "Adicione uma chave de API acima para os ativar."
+    "aiNeedsKey": "Adicione uma chave de API acima para os ativar.",
+    "binAutoEmpty": "Esvaziar a reciclagem automaticamente",
+    "binAutoEmptyAfter": "Ao fim de {{days}} dias",
+    "binAutoEmptyHint": "As tarefas eliminadas há mais tempo são removidas definitivamente em todos os dispositivos que sincroniza."
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",

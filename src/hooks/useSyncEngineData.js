@@ -22,6 +22,7 @@ import { tombstoneCutoff, pruneCompletedTaskUids } from '../sync/tombstoneRetent
 import { keepImportedTask } from '../sync/payloadExclusions.js';
 import { dropResurrectedTasks } from '../utils/dropResurrectedTasks.js';
 import { preserveStickyFields } from '../utils/preserveStickyFields.js';
+import { stripProjectRefs, stripGoalRefs, resolveDeletedIds } from '../utils/referentialIntegrity.js';
 import { rescueUnsyncedTasks } from '../utils/rescueUnsyncedTasks.js';
 import { readRetiredTaskIds, applyTaskRetirements, RETIRED_TASK_IDS_STORAGE_KEY } from '../utils/retiredTaskIds.js';
 import { dropTombstonedObsidianTasks, dropTombstonedObsidianNotes } from '../utils/obsidianDeletions.js';
@@ -342,10 +343,54 @@ export default function useSyncEngineData(deps) {
       if (normalizedUnsched) normalizedUnsched = contained.unscheduledTasks;
     }
 
+    // Referential self-heal at the APPLY boundary (#2137). A peer's deletion
+    // arrives as a tombstone in the same payload; rows that still point at the
+    // deleted entity must lose the reference here too, or this device keeps
+    // hiding the task (the Inbox treats any "project task" as belonging to a
+    // project) or the project (neither under its goal nor standalone) forever.
+    //
+    // The map to trust is the PAYLOAD's when it carries one: both tiers merge
+    // tombstone bundles grow-only into the payload, so it already includes this
+    // device's deletions — and a restore replaces the local maps with the
+    // backup's, so a project restored from a backup written before its
+    // deletion comes back WITH its tasks attached. Falling back to the local
+    // map is only for a payload from a client that omits the key (the apply
+    // leaves the local map in force then).
+    //
+    // The repair runs before storage/state are written, unstamped: it is a
+    // deterministic function of the tombstone, so every device computes the
+    // same one and a last-writer-wins tie converges (unlike the earlier "id not
+    // in my project list means deleted" inference, which differed by device).
+    const localTombstones = (key) => {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(key) || '{}');
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      } catch { return {}; }
+    };
+    const deletedProjectIds = resolveDeletedIds(
+      data.deletedProjectIds,
+      localTombstones('day-planner-deleted-project-ids'),
+    );
+    const deletedGoalIds = resolveDeletedIds(
+      data.deletedGoalIds,
+      localTombstones('day-planner-deleted-goal-ids'),
+    );
+    if (normalizedTasks) normalizedTasks = stripProjectRefs(normalizedTasks, deletedProjectIds);
+    if (normalizedUnsched) normalizedUnsched = stripProjectRefs(normalizedUnsched, deletedProjectIds);
+    const recycleBinForApply = Array.isArray(data.recycleBin)
+      ? stripProjectRefs(data.recycleBin, deletedProjectIds)
+      : null;
+    const recurringForApply = Array.isArray(data.recurringTasks)
+      ? stripProjectRefs(data.recurringTasks, deletedProjectIds)
+      : null;
+    const projectsForApply = Array.isArray(data.projects)
+      ? stripGoalRefs(data.projects, deletedGoalIds)
+      : null;
+
     // Update localStorage
     if (normalizedTasks) localStorage.setItem('day-planner-tasks', JSON.stringify(normalizedTasks));
     if (normalizedUnsched) localStorage.setItem('day-planner-unscheduled', JSON.stringify(normalizedUnsched));
-    if (data.recycleBin) localStorage.setItem('day-planner-recycle-bin', JSON.stringify(data.recycleBin));
+    if (recycleBinForApply) localStorage.setItem('day-planner-recycle-bin', JSON.stringify(recycleBinForApply));
     // Calendar URLs: apply whenever remote explicitly includes them (even empty string,
     // which propagates an intentional URL clear). Only skip when the key is absent.
     // In per-user mode the top-level URLs are device-local — config is applied from
@@ -365,7 +410,7 @@ export default function useSyncEngineData(deps) {
     // taskCalendarAuth is not applied from the top level — credentials are device-local
     // unless they arrive per-user inside calendarConfigByUser (applied below).
     if (data.completedTaskUids) localStorage.setItem('day-planner-task-completed-uids', JSON.stringify(data.completedTaskUids));
-    if (data.recurringTasks) localStorage.setItem('day-planner-recurring-tasks', JSON.stringify(data.recurringTasks));
+    if (recurringForApply) localStorage.setItem('day-planner-recurring-tasks', JSON.stringify(recurringForApply));
     if (data.routineDefinitions) localStorage.setItem('day-planner-routine-definitions', JSON.stringify(data.routineDefinitions));
     // Only apply todayRoutines/routinesDate if the remote data is from today.
     // If it's from a previous day, skip it — local state (already cleared by loadData) is correct.
@@ -462,9 +507,9 @@ export default function useSyncEngineData(deps) {
       localStorage.setItem('day-planner-goals', JSON.stringify(data.goals));
       setGoals(data.goals);
     }
-    if (data.projects) {
-      localStorage.setItem('day-planner-projects', JSON.stringify(data.projects));
-      setProjects(data.projects);
+    if (projectsForApply) {
+      localStorage.setItem('day-planner-projects', JSON.stringify(projectsForApply));
+      setProjects(projectsForApply);
     }
     if (data.areas) {
       localStorage.setItem('day-planner-areas', JSON.stringify(data.areas));
@@ -593,17 +638,21 @@ export default function useSyncEngineData(deps) {
     // of an id the result placed in the OTHER list is a cross-list move the
     // reconcile already resolved, and rescuing it undid that move every cycle
     // (utils/rescueUnsyncedTasks.js, the cross-list guard).
-    if (normalizedTasks) setTasks(prev => applyTaskRetirements(
+    // The strip runs AGAIN on the setState output because the rescue pass can
+    // re-add a device-local row (`_native`, imported, intent) the merge never
+    // carried: the invariant is that no state list may reference a tombstoned
+    // project, not just the rows the payload happened to contain.
+    if (normalizedTasks) setTasks(prev => stripProjectRefs(applyTaskRetirements(
       rescueUnsyncedTasks(preserveStickyFields(normalizedTasks, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds, rescueOpts),
-      retiredRecord, retiredLiveIds));
-    if (normalizedUnsched) setUnscheduledTasks(prev => applyTaskRetirements(
+      retiredRecord, retiredLiveIds), deletedProjectIds));
+    if (normalizedUnsched) setUnscheduledTasks(prev => stripProjectRefs(applyTaskRetirements(
       rescueUnsyncedTasks(preserveStickyFields(normalizedUnsched, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds, rescueOpts),
-      retiredRecord, retiredLiveIds));
+      retiredRecord, retiredLiveIds), deletedProjectIds));
     if (data.unscheduledOrderTimestamp) {
       setUnscheduledOrderTimestamp(data.unscheduledOrderTimestamp);
       localStorage.setItem('day-planner-unscheduled-order-ts', data.unscheduledOrderTimestamp);
     }
-    if (data.recycleBin) setRecycleBin(data.recycleBin);
+    if (recycleBinForApply) setRecycleBin(recycleBinForApply);
     if (!perUserCalendar && data.syncUrl !== undefined) setSyncUrl(data.syncUrl);
     if (!perUserCalendar && data.taskCalendarUrl !== undefined) setTaskCalendarUrl(data.taskCalendarUrl);
     if (!perUserCalendar && data.icsCalendars !== undefined) {
@@ -612,8 +661,8 @@ export default function useSyncEngineData(deps) {
       if (remotePrimaryMeta) setPrimaryCalendarMeta(remotePrimaryMeta);
     }
     if (data.completedTaskUids) setCompletedTaskUids(new Set(data.completedTaskUids));
-    if (data.recurringTasks) setRecurringTasks(prev =>
-      rescueUnsyncedTasks(data.recurringTasks, prev, rescueDeletedIds, t => !!t._intentKey));
+    if (recurringForApply) setRecurringTasks(prev =>
+      stripProjectRefs(rescueUnsyncedTasks(recurringForApply, prev, rescueDeletedIds, t => !!t._intentKey), deletedProjectIds));
     if (data.routineDefinitions) setRoutineDefinitions(data.routineDefinitions);
     // Only apply today's routine state if the remote data is from today — matching
     // the localStorage guard above. If routinesDate is stale/off, applying it would

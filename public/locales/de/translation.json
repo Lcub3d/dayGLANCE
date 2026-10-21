@@ -778,7 +778,10 @@
     "theme": "Design",
     "themeSystem": "System",
     "glanceWebdavLog": "WebDAV-Ereignisprotokoll",
-    "aiNeedsKey": "Fügen Sie oben einen API-Schlüssel hinzu, um diese einzuschalten."
+    "aiNeedsKey": "Fügen Sie oben einen API-Schlüssel hinzu, um diese einzuschalten.",
+    "binAutoEmpty": "Papierkorb automatisch leeren",
+    "binAutoEmptyAfter": "Nach {{days}} Tagen",
+    "binAutoEmptyHint": "Aufgaben, die vor längerer Zeit gelöscht wurden, werden endgültig entfernt – auf allen Geräten, die du synchronisierst."
   },
   "dailyNotes": {
     "quickNotes": "Kurznotizen",

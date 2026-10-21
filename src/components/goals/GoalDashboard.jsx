@@ -2883,9 +2883,10 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
       title: t('goals.deleteGoal'),
       message: t('goals.deleteGoalConfirm'),
       onConfirm: () => {
-        projects
-          .filter(p => p.goalId === goalId)
-          .forEach(p => updateProject(p.id, { goalId: undefined }));
+        // The goal's projects are reparented to standalone by the context's
+        // deleteGoal itself (App.jsx wires it through utils/deleteCascade.js),
+        // so every deletion path — this dashboard, a lifeGLANCE intent, an
+        // MCP-undo replay — leaves no project pointing at a deleted goal.
         deleteGoal(goalId);
         setConfirmDialog(null);
       },

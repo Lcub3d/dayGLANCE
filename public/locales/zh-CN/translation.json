@@ -1377,7 +1377,13 @@
     "loadFailedDownload": "下载副本",
     "loadFailedDiscard": "丢弃",
     "loadFailedDiscardConfirm": "要丢弃无法读取的数据吗？当前数据将覆盖保存，且无法撤销。如果之后可能需要，请先下载一份副本。",
-    "seeWhatIsUsingSpace": "查看占用空间的内容"
+    "seeWhatIsUsingSpace": "查看占用空间的内容",
+    "projectionPending": "使用一周后会显示预测。",
+    "projectionFlat": "本地存储用量没有增长。",
+    "projectionWarningFull": "本地存储已使用超过 80%。请在设置中打开“存储空间明细”，查看占用情况。",
+    "projectionDays_other": "按当前速度，本地存储大约 {{count}} 天后用满。",
+    "projectionMonths_other": "按当前速度，本地存储大约 {{count}} 个月后用满。",
+    "projectionWarningSoon_other": "本地存储即将用满：按当前速度，大约 {{count}} 天后用满。请在设置中打开“存储空间明细”，查看占用情况。"
   },
   "weeklyReview": {
     "tasksDone": "已完成任务",

@@ -1379,7 +1379,16 @@
     "loadFailedDownload": "Scarica una copia",
     "loadFailedDiscard": "Scarta",
     "loadFailedDiscardConfirm": "Scartare i dati illeggibili? I tuoi dati attuali verranno salvati al loro posto e non si potrà annullare. Scarica prima una copia se potrebbe servirti.",
-    "seeWhatIsUsingSpace": "Vedi cosa occupa spazio"
+    "seeWhatIsUsingSpace": "Vedi cosa occupa spazio",
+    "projectionPending": "Una previsione compare dopo una settimana di utilizzo.",
+    "projectionFlat": "Lo spazio locale non sta crescendo.",
+    "projectionWarningFull": "Lo spazio locale è pieno oltre l'80%. Apri «Dettaglio dello spazio di archiviazione» nelle Impostazioni per vedere cosa lo occupa.",
+    "projectionDays_one": "Al ritmo attuale, lo spazio locale sarà pieno tra circa {{count}} giorno.",
+    "projectionMonths_one": "Al ritmo attuale, lo spazio locale sarà pieno tra circa {{count}} mese.",
+    "projectionWarningSoon_one": "Lo spazio locale si sta riempiendo: al ritmo attuale sarà pieno tra circa {{count}} giorno. Apri «Dettaglio dello spazio di archiviazione» nelle Impostazioni per vedere cosa lo occupa.",
+    "projectionDays_other": "Al ritmo attuale, lo spazio locale sarà pieno tra circa {{count}} giorni.",
+    "projectionMonths_other": "Al ritmo attuale, lo spazio locale sarà pieno tra circa {{count}} mesi.",
+    "projectionWarningSoon_other": "Lo spazio locale si sta riempiendo: al ritmo attuale sarà pieno tra circa {{count}} giorni. Apri «Dettaglio dello spazio di archiviazione» nelle Impostazioni per vedere cosa lo occupa."
   },
   "weeklyReview": {
     "tasksDone": "Attività completate",

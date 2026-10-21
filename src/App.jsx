@@ -54,6 +54,7 @@ import { widgetDayTasks } from './utils/widgetNativeEvents.js';
 import { useWidgetNativeEvents } from './hooks/useWidgetNativeEvents.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
+import useStorageProjection from './hooks/useStorageProjection.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, extractShareTitle } from './utils/textFormatting.jsx';
 import { msUntilMidnightRefresh, rememberViewsForMidnight, readMidnightViews, clearMidnightViews } from './utils/midnightRefresh.js';
 import { computeAvailableSlots as computeAvailableSlotsPure, adjustPastConflicts } from './utils/dayOccupancy.js';
@@ -1554,6 +1555,8 @@ const DayPlanner = () => {
     onStorageFull: () => setUndoToast({ message: t('backup.storageFull'), kind: 'warning' }),
     autoEmptyDays: binAutoEmptyDays, dataLoaded, isTrayMode,
   });
+  // A daily sample of local-storage use and a warning before it is full (#2141).
+  useStorageProjection({ dataLoaded, isTrayMode, setUndoToast, t });
 
   // AI configuration, voice input, and weekly review state
   const {

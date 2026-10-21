@@ -1377,7 +1377,16 @@
     "loadFailedDownload": "Download a copy",
     "loadFailedDiscard": "Discard",
     "loadFailedDiscardConfirm": "Discard the unreadable data? Your current data will be saved over it, and this can't be undone. Download a copy first if you might need it.",
-    "seeWhatIsUsingSpace": "See what's using space"
+    "seeWhatIsUsingSpace": "See what's using space",
+    "projectionPending": "A forecast appears after a week of use.",
+    "projectionFlat": "Local storage use isn't growing.",
+    "projectionWarningFull": "Local storage is over 80% full. Open Storage Breakdown in Settings to see what's using it.",
+    "projectionDays_one": "At your current rate, local storage fills in about {{count}} day.",
+    "projectionMonths_one": "At your current rate, local storage fills in about {{count}} month.",
+    "projectionWarningSoon_one": "Local storage is filling up: at the current rate it is full in about {{count}} day. Open Storage Breakdown in Settings to see what's using it.",
+    "projectionDays_other": "At your current rate, local storage fills in about {{count}} days.",
+    "projectionMonths_other": "At your current rate, local storage fills in about {{count}} months.",
+    "projectionWarningSoon_other": "Local storage is filling up: at the current rate it is full in about {{count}} days. Open Storage Breakdown in Settings to see what's using it."
   },
   "weeklyReview": {
     "tasksDone": "Tasks done",

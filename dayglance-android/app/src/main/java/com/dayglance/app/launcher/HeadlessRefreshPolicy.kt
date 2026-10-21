@@ -8,8 +8,12 @@ package com.dayglance.app.launcher
 object HeadlessRefreshPolicy {
     /** Two headless runs are never closer than this: a WebView boot costs seconds and tens of MB. */
     const val MIN_INTERVAL_MS = 10 * 60_000L
-    /** A run that has not reported by then is torn down and logged `failed`. */
-    const val CAP_MS = 60_000L
+    /**
+     * A run that has not reported by then is torn down and logged `failed`. Two
+     * minutes: an alive cycle was measured at 75 s on a real account (2026-10-20),
+     * and a headless run adds the WebView boot and the data load to that.
+     */
+    const val CAP_MS = 120_000L
 
     sealed class Decision {
         /** The renderer is alive by now: queue the REFRESH for it instead (it reports `ran`/`failed`). */

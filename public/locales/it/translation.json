@@ -778,7 +778,10 @@
     "theme": "Tema",
     "themeSystem": "Sistema",
     "glanceWebdavLog": "Registro eventi WebDAV",
-    "aiNeedsKey": "Aggiungi una chiave API qui sopra per attivarle."
+    "aiNeedsKey": "Aggiungi una chiave API qui sopra per attivarle.",
+    "binAutoEmpty": "Svuota automaticamente il cestino",
+    "binAutoEmptyAfter": "Dopo {{days}} giorni",
+    "binAutoEmptyHint": "Le attività eliminate da più tempo vengono rimosse definitivamente su tutti i dispositivi che sincronizzi."
   },
   "dailyNotes": {
     "quickNotes": "Note rapide",

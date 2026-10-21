@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Render-free: useState hands back a value and a spy setter.
-vi.mock('react', () => ({ useState: (init) => [init, vi.fn()] }));
+// Render-free: useState hands back a value and a spy setter; an effect runs
+// at once, as the first commit would run it.
+vi.mock('react', () => ({ useState: (init) => [init, vi.fn()], useEffect: (fn) => { fn(); } }));
 
 const { default: useRecycleBin } = await import('./useRecycleBin.js');
 const { resetWriteFailures, getWriteFailures } = await import('../utils/storageWrites.js');
@@ -46,5 +47,65 @@ describe('confirmEmptyBin when storage is full (#2139)', () => {
     expect(deps.pushUndo).not.toHaveBeenCalled();
     expect(deps.onStorageFull).toHaveBeenCalled();
     expect(getWriteFailures()).toEqual(['day-planner-deleted-task-ids']);
+  });
+});
+
+// #2141: the automatic empty removes items deleted more than N days ago,
+// through the same tombstone path as the manual one.
+describe('automatic emptying', () => {
+  const DAY = 86400000;
+  let store;
+  let deps;
+  const at = (daysAgo) => new Date(Date.now() - daysAgo * DAY).toISOString();
+  beforeEach(() => {
+    resetWriteFailures();
+    store = { 'day-planner-deleted-task-ids': JSON.stringify({ older: 'x' }) };
+    globalThis.localStorage = {
+      getItem: vi.fn((k) => store[k] ?? null),
+      setItem: vi.fn((k, v) => { store[k] = v; }),
+    };
+    globalThis.window = {};
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    deps = {
+      recycleBin: [
+        { id: 'old', deletedAt: at(40) },
+        { id: 'recent', deletedAt: at(3) },
+        { id: 'unstamped' },
+      ],
+      setRecycleBin: vi.fn(),
+      pushUndo: vi.fn(),
+      setTasks: vi.fn(),
+      setUnscheduledTasks: vi.fn(),
+      playUISound: vi.fn(),
+      dataLoaded: true,
+      autoEmptyDays: 30,
+    };
+  });
+  afterEach(() => { delete globalThis.localStorage; delete globalThis.window; vi.restoreAllMocks(); });
+
+  const remaining = () => deps.setRecycleBin.mock.calls[0][0](deps.recycleBin).map(t => t.id);
+
+  it('tombstones and removes only the expired items', () => {
+    useRecycleBin(deps);
+    const tombstones = JSON.parse(store['day-planner-deleted-task-ids']);
+    expect(Object.keys(tombstones).sort()).toEqual(['old', 'older']);
+    // an item without a deletedAt never expires
+    expect(remaining()).toEqual(['recent', 'unstamped']);
+    expect(deps.pushUndo).not.toHaveBeenCalled();
+    expect(deps.playUISound).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when off, before the data has loaded, or in the tray', () => {
+    useRecycleBin({ ...deps, autoEmptyDays: 0 });
+    useRecycleBin({ ...deps, dataLoaded: false });
+    useRecycleBin({ ...deps, isTrayMode: true });
+    expect(deps.setRecycleBin).not.toHaveBeenCalled();
+    expect(globalThis.localStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('removes nothing when the tombstones cannot be written', () => {
+    globalThis.localStorage.setItem = vi.fn(() => { throw Object.assign(new Error('q'), { name: 'QuotaExceededError' }); });
+    useRecycleBin(deps);
+    expect(deps.setRecycleBin).not.toHaveBeenCalled();
   });
 });

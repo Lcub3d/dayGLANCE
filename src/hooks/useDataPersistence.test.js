@@ -688,3 +688,112 @@ describe('saveData writes only the buckets that changed', () => {
     expect(dataWrites()).toEqual(['day-planner-habit-logs']);
   });
 });
+
+// ── Referential self-heal at boot (#2137) ───────────────────────────────────
+// A row that outlives its target is invisible state: the Inbox hides "project
+// tasks" whose project is gone, and a project whose goal is gone belongs to
+// neither the goal's list nor the standalone one. The boot pass repairs data
+// written before the delete-time cascades existed. Only a TOMBSTONE may make a
+// reference dangling — never an id missing from a list this device happens to
+// hold (a new device, a vault pull that carried tasks but not projects, a
+// payload from a client with Goals & Projects off).
+describe('loadData drops references to deleted projects and goals (#2137)', () => {
+  const goneProjectStore = () => ({
+    'day-planner-tasks': JSON.stringify([{ id: 't1', projectId: 'gone' }, { id: 't2', projectId: 'live' }]),
+    'day-planner-unscheduled': JSON.stringify([{ id: 'u1', projectId: 'gone' }]),
+    'day-planner-recycle-bin': JSON.stringify([{ id: 'b1', projectId: 'gone', deletedAt: 'x' }]),
+    'day-planner-recurring-tasks': JSON.stringify([{ id: 'r1', projectId: 'gone' }]),
+    'day-planner-projects': JSON.stringify([
+      { id: 'live', goalId: 'gone-goal', updatedAt: 'old' },
+      { id: 'p2', goalId: 'live-goal', updatedAt: 'old' },
+    ]),
+    'day-planner-goals': JSON.stringify([{ id: 'live-goal' }]),
+    'day-planner-deleted-project-ids': JSON.stringify({ gone: '2026-10-18T13:30:15.460Z' }),
+    'day-planner-deleted-goal-ids': JSON.stringify({ 'gone-goal': '2026-10-18T21:30:15.460Z' }),
+  });
+  let store;
+  let setItem;
+
+  beforeEach(() => {
+    store = goneProjectStore();
+    setItem = vi.fn((key, value) => { store[key] = value; });
+    globalThis.localStorage = {
+      getItem: vi.fn((k) => store[k] ?? null),
+      setItem,
+      removeItem: vi.fn(),
+    };
+  });
+  afterEach(() => {
+    delete globalThis.localStorage;
+    delete globalThis.window;
+  });
+
+  const load = async () => {
+    // The hook has no React state of its own; call it as the plain function the
+    // tests above do (aliased so the hooks lint rule knows it is not rendered).
+    const loadHook = await loadHookAs('main');
+    const { props, setters } = makeProps();
+    await loadHook(props).loadData();
+    return { setters };
+  };
+
+  it('detaches tasks, templates and bin entries from a tombstoned project', async () => {
+    const { setters } = await load();
+
+    const tasks = setters.setTasks.mock.calls[0][0]([]);
+    expect(tasks.find(t => t.id === 't1')).not.toHaveProperty('projectId');
+    expect(tasks.find(t => t.id === 't2').projectId).toBe('live');
+    expect(setters.setUnscheduledTasks.mock.calls[0][0][0]).not.toHaveProperty('projectId');
+    expect(setters.setRecycleBin.mock.calls[0][0][0]).not.toHaveProperty('projectId');
+    expect(setters.setRecurringTasks.mock.calls[0][0][0]).not.toHaveProperty('projectId');
+  });
+
+  it('makes the tombstoned goal\'s projects standalone without re-stamping them', async () => {
+    const { setters } = await load();
+
+    const projects = setters.setProjects.mock.calls[0][0];
+    expect(projects.find(p => p.id === 'live')).not.toHaveProperty('goalId');
+    expect(projects.find(p => p.id === 'live').updatedAt).toBe('old');
+    expect(projects.find(p => p.id === 'p2').goalId).toBe('live-goal');
+  });
+
+  it('persists the repaired copies before state is set, so the save pass sees no edit', async () => {
+    await load();
+
+    const written = Object.fromEntries(setItem.mock.calls);
+    expect(JSON.parse(written['day-planner-tasks']).find(t => t.id === 't1')).not.toHaveProperty('projectId');
+    expect(JSON.parse(written['day-planner-recurring-tasks'])[0]).not.toHaveProperty('projectId');
+    expect(JSON.parse(written['day-planner-recycle-bin'])[0]).not.toHaveProperty('projectId');
+    expect(JSON.parse(written['day-planner-projects'])[0]).not.toHaveProperty('goalId');
+  });
+
+  it('does not detach an id that is merely absent from the local project list', async () => {
+    // A partial snapshot: tasks arrived, projects did not. No tombstone says the
+    // project is deleted, so the reference must survive.
+    store = {
+      'day-planner-tasks': JSON.stringify([{ id: 't1', projectId: 'not-pulled-yet' }]),
+      'day-planner-unscheduled': JSON.stringify([{ id: 'u1', projectId: 'not-pulled-yet' }]),
+    };
+    const { setters } = await load();
+    const tasks = setters.setTasks.mock.calls[0][0]([]);
+    expect(tasks[0].projectId).toBe('not-pulled-yet');
+    expect(setters.setUnscheduledTasks.mock.calls[0][0][0].projectId).toBe('not-pulled-yet');
+    expect(setters.setProjects).not.toHaveBeenCalled();
+  });
+
+  it('does not reparent projects when the goal list is absent', async () => {
+    store = {
+      'day-planner-projects': JSON.stringify([{ id: 'p1', goalId: 'not-pulled-yet', updatedAt: 'old' }]),
+    };
+    const { setters } = await load();
+    expect(setters.setProjects).toHaveBeenCalledWith([{ id: 'p1', goalId: 'not-pulled-yet', updatedAt: 'old' }]);
+  });
+
+  it('a corrupt tombstone map means no information, not "everything is deleted"', async () => {
+    store['day-planner-deleted-project-ids'] = '{not json';
+    const { setters } = await load();
+    const tasks = setters.setTasks.mock.calls[0][0]([]);
+    expect(tasks.find(t => t.id === 't1').projectId).toBe('gone');
+    expect(setters.setDataLoaded).toHaveBeenCalledWith(true);
+  });
+});
